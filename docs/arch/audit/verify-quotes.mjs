@@ -28,15 +28,22 @@ function walk(dir, out = []) {
   let ents;
   try { ents = fs.readdirSync(dir, {withFileTypes: true}); } catch { return out; }
   for (const e of ents) {
-    if (['node_modules', '.git'].includes(e.name) || e.name.startsWith('.')) continue;
+    if (['node_modules', '.git'].includes(e.name)) continue;
     const p = path.join(dir, e.name);
-    if (e.isDirectory()) walk(p, out); else out.push(p);
+    if (e.isDirectory()) {
+      // 点目录跳过；点「文件」是正规源码（.eslintrc.js 等），一律收录
+      if (e.name.startsWith('.')) continue;
+      walk(p, out);
+    } else {
+      out.push(p);
+    }
   }
   return out;
 }
 
 const INDEX = new Map();
-for (const root of ['packages', 'private', 'scripts']) {
+// '' = RN 仓库根：根级配置文件同样需要能被代码块锚点解析
+for (const root of ['', 'packages', 'private', 'scripts']) {
   const abs = path.join(REPO, root);
   if (!fs.existsSync(abs)) continue;
   for (const f of walk(abs)) {
@@ -67,14 +74,19 @@ function isIllustrativeBlock(body) {
   // 箭头流程图：多行以 → / ↓ / └ 开头或结尾，且缺少代码语法特征
   const arrowFlow = body.filter(l => /^\s*[A-Za-z0-9_$.()\[\]]*\s*(→|↓|←|⇒)/.test(l) || /\s(→|↓|←)\s/.test(l)).length;
   const CMD = /^\s*(node|npm|yarn|git|cd|ls|grep|find)\s+\S/;
+  const meaningful = body.filter(l => l.trim()).length;
+  const cmdLines = body.filter(l => CMD.test(l)).length;
+  // 单行/双行的命令行调用是「命令模板」，不是源码摘录 —— 无条件跳过。
+  // （否则它可能被误挂到附近某个无关的 `文件:行号` 锚点上。）
+  if (cmdLines >= 1 && cmdLines === meaningful && meaningful <= 2) return true;
   const looksLikeShell = /^\s*(\$|#|>)\s/.test(body.find(l => l.trim()) ?? '') ||
-    body.filter(l => CMD.test(l)).length >= 2;
+    cmdLines >= 2;
   const codey = body.some(l => /[;{}()]|::|=>|\bfunction\b|\breturn\b/.test(l));
   if (hasTree) return true;
   if (looksLikeShell && !codey) return true;
   // 箭头流程图：过半的行含箭头，且几乎无分号/花括号
-  const meaningful = body.filter(l => l.trim()).length;
-  if (arrowFlow >= Math.max(2, meaningful * 0.5) && !/[;{}]/.test(body.join('\n'))) return true;
+  const arrowFlow2 = arrowFlow;
+  if (arrowFlow2 >= Math.max(2, meaningful * 0.5) && !/[;{}]/.test(body.join('\n'))) return true;
   if (!codey && meaningful > 2 && !/[;]/.test(body.join('\n'))) return true;
   return false;
 }

@@ -28,6 +28,9 @@ const JSON_OUT = args.includes('--json') ? args[args.indexOf('--json') + 1] : nu
 
 /** 仓库中用于搜索源码的根目录白名单（避免命中 .archify / node_modules） */
 const SEARCH_ROOTS = [
+  // RN 仓库根：仓库根级的配置文件（.eslintrc.js / .babelrc / .flowconfig …）
+  // 是可审计源码，必须能被引用到行号；'' 表示 REPO 本身。
+  '',
   'packages',
   'private',
   'scripts',
@@ -51,10 +54,15 @@ function walk(dir, out = [], allowDot = false) {
   for (const e of ents) {
     // .git 永远跳过；其余点目录只在根被显式列入 SEARCH_ROOTS 时才进入
     if (e.name === 'node_modules' || e.name === '.git') continue;
-    if (!allowDot && e.name.startsWith('.')) continue;
     const p = path.join(dir, e.name);
-    if (e.isDirectory()) walk(p, out, false);
-    else out.push(p);
+    if (e.isDirectory()) {
+      if (!allowDot && e.name.startsWith('.')) continue;
+      walk(p, out, false);
+    } else {
+      // 点「文件」是正规源码（.eslintrc.js / .babelrc / .flowconfig …），一律收录，
+      // 否则仓库根级的配置文件无法被引用审计（曾经是盲区）。
+      out.push(p);
+    }
   }
   return out;
 }

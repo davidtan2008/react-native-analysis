@@ -12584,6 +12584,243 @@ addDocClaim('D217', '文档给出了哈希契约违反在 AttributedString 一�
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// 78 文档 · 构建期的静态检查与转译层（ESLint + Babel）
+//   LNT-1 … LNT-23
+// ────────────────────────────────────────────────────────────────────────
+{
+  const EC = 'packages/eslint-config-react-native';
+  const EPR = 'packages/eslint-plugin-react-native';
+  const EPS = 'packages/eslint-plugin-specs';
+  const BP = 'packages/react-native-babel-preset/src';
+  const BT = 'packages/react-native-babel-transformer/src';
+
+  const ecIndex = read(EC + '/index.js') ?? '';
+  const ecShared = read(EC + '/shared.js') ?? '';
+  const ecFlat = read(EC + '/flat.js') ?? '';
+  const noDeep = read(EPR + '/no-deep-imports.js') ?? '';
+  const platColors = read(EPR + '/platform-colors.js') ?? '';
+  const specModules = read(EPS + '/react-native-modules.js') ?? '';
+  const prepack = read(EPS + '/prepack.js') ?? '';
+  const postpack = read(EPS + '/postpack.js') ?? '';
+  const babelReg = read(EPS + '/with-babel-register/index.js') ?? '';
+  const lazyImports = read(BP + '/configs/lazy-imports.js') ?? '';
+  const presetMain = read(BP + '/configs/main.js') ?? '';
+  const warnDeep = read(BP + '/plugin-warn-on-deep-imports.js') ?? '';
+  const inlinePlat = read(BP + '/inline-platform-plugin.js') ?? '';
+  const transformer = read(BT + '/index.js') ?? '';
+  const codegen = read('packages/babel-plugin-codegen/index.js') ?? '';
+  const rootEslint = read('.eslintrc.js') ?? '';
+
+  // ── LNT-1：eslintrc 与 flat 的 glob 宽度不同 ──
+  const ecFiles = [...ecIndex.matchAll(/files:\s*\[([^\]]*)\]/g)].map(m => m[1]);
+  const flatFiles = [...ecFlat.matchAll(/files:\s*\[([^\]]*)\]/g)].map(m => m[1]);
+  // eslintrc 侧前四个 override（flow / jsx / reactNative / typescript）都无 **/；第 5 个 jest override 用了 **/
+  const ecFirstFour = ecFiles.slice(0, 4);
+  add('C615', 'LNT-1 核心：eslint-config-react-native/index.js 的四个 override 的 files 全部是 *.js / *.jsx / *.ts / *.tsx 形式（无 **/），而 flat.js 的对应 override 全部是 **/*.js 形式 —— 同一份 shared.js 在两种配置格式下作用于不同的文件集合',
+    'eslintrc 前四个 override 无 **/，flat 侧全部带 **/',
+    'eslintrc 侧 files: ' + ecFiles.length + ' 个（前 4 个带 **/ 的: ' + ecFirstFour.filter(f => f.includes('**')).length + '）' +
+      ' / flat 侧 files: ' + flatFiles.length + ' 个，带 **/ 的: ' + flatFiles.filter(f => f.includes('**')).length,
+    ecFirstFour.length === 4 && ecFirstFour.every(f => !f.includes('**')) &&
+      flatFiles.filter(f => f.includes('**')).length >= 4 &&
+      ecIndex.includes("files: ['*.js'],") &&
+      ecIndex.includes("files: ['*.js', '*.jsx', '*.ts', '*.tsx'],") &&
+      ecFlat.includes("files: ['**/*.js'],") &&
+      ecFlat.includes("files: ['**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx'],"));
+
+  // ── LNT-2：配置文本损坏 ──
+  add('C616', 'LNT-2 核心：shared.js 有一行把 `: 1,` 吞进了行尾注释（注释里还多一个孤立的引号）—— 语法完全合法但某条规则从未生效',
+    '该行含被吞进注释的 `: 1,`',
+    '命中: ' + (ecShared.includes('comments": 1,') ? '是' : '否'),
+    ecShared.includes('disallow usage of configurable warning terms in comments": 1,') &&
+      ecShared.includes("'no-warning-comments': 0,"));
+
+  // ── LNT-3：v9 计划移除的格式类规则 ──
+  const legacyRules = ["'no-inner-declarations'", "'no-negated-in-lhs'", "'no-native-reassign'", "'no-catch-shadow'"];
+  const present = legacyRules.filter(r => ecShared.includes(r + ':'));
+  add('C617', 'LNT-3：shared.js 里存在四条 ESLint v9 计划移除的格式类规则（当前仓库 eslint ^8.57.0 仍可用，升级到 9 时这份配置会加载失败）',
+    '四条规则都在配置里',
+    present.length + '/4 条: ' + present.join(' '),
+    present.length === 4);
+
+  // ── LNT-4：globals 的 legacy 布尔 → flat 字符串 ──
+  add('C618', 'LNT-4：shared.js 的 globals 用 legacy 布尔形式（true/false，注释写「bool specifying if it can be redefined」），flat.js 显式转换为 writable/readonly —— 是刻意的双格式兼容而非遗留问题',
+    'flat.js 存在 convertGlobals 且与注释一致',
+    '转换函数:' + ecFlat.includes('const convertGlobals = globals => {') +
+      ' / 映射:' + ecFlat.includes("converted[key] = value ? 'writable' : 'readonly';"),
+    ecFlat.includes('// Convert globals from legacy format (true/false) to flat config format (\'readonly\'/\'writable\')') &&
+      ecFlat.includes("converted[key] = value ? 'writable' : 'readonly';") &&
+      ecShared.includes('// Map from global var to bool specifying if it can be redefined') &&
+      ecShared.includes('__DEV__: true,'));
+
+  // ── LNT-5：no-deep-imports 的级别 ──
+  add('C619', 'LNT-5：@react-native/no-deep-imports 的级别是 1（warning）而非 error —— 唯一一条 RN 自有规则连 error 级别都不是',
+    '级别为 1',
+    ecShared.includes("'@react-native/no-deep-imports': 1,") ? '1' : '其它',
+    ecShared.includes("'@react-native/no-deep-imports': 1,") &&
+      !ecShared.includes("'@react-native/no-deep-imports': 2,") &&
+      rootEslint.includes("'@react-native/no-deep-imports': 'off',"));
+
+  // ── LNT-6：ESLint 与 Babel 的 deep-import 判定不一致 ──
+  const eslintExempts = ['react-native/asset-registry', 'react-native/react-private-interface', 'react-native/setup-env', 'react-native/unstable-internals-do-not-use'];
+  const eslintHasAll = eslintExempts.every(e => noDeep.includes("source.value === '" + e + "'"));
+  add('C620', 'LNT-6 核心：ESLint 的 no-deep-imports 豁免了 4 个二级入口与 react-native/src/fb_internal/，而 Babel 的 warn-on-deep-imports 只判断 parts[0] === "react-native" —— 一个都不豁免；同一个导入静态检查放行、构建期却打警告',
+    'ESLint 豁免 4 条 + fb_internal，Babel 零豁免',
+    'ESLint 豁免齐全:' + eslintHasAll +
+      ' / fb_internal:' + noDeep.includes("startsWith('react-native/src/fb_internal/')") +
+      ' / Babel 无豁免:' + !warnDeep.includes('asset-registry') && !warnDeep.includes('fb_internal'),
+    eslintHasAll &&
+      noDeep.includes("startsWith('react-native/src/fb_internal/')") &&
+      warnDeep.includes("const parts = source.split('/');") &&
+      warnDeep.includes("return parts.length > 1 && parts[0] === 'react-native';") &&
+      !warnDeep.includes('asset-registry'));
+
+  // ── LNT-7：Babel 缺 ExportAllDeclaration ──
+  add('C621', 'LNT-7：Babel 的 warn-on-deep-imports 有 ImportDeclaration / CallExpression / ExportNamedDeclaration 三个 visitor，但没有 ExportAllDeclaration —— `export * from "react-native/..."` 不会产生警告',
+    '三个 visitor 齐全且无 ExportAllDeclaration',
+    'ImportDeclaration:' + warnDeep.includes('ImportDeclaration(path, state) {') +
+      ' / ExportNamedDeclaration:' + warnDeep.includes('ExportNamedDeclaration(path, state) {') +
+      ' / ExportAllDeclaration:' + warnDeep.includes('ExportAllDeclaration'),
+    warnDeep.includes('ImportDeclaration(path, state) {') &&
+      warnDeep.includes('ExportNamedDeclaration(path, state) {') &&
+      !warnDeep.includes('ExportAllDeclaration'));
+
+  // ── LNT-8：DynamicColorIOS 的 forEach 报错 ──
+  const dynStart = platColors.indexOf("node.callee.name === 'DynamicColorIOS'");
+  const dynBlock = dynStart > 0 ? platColors.slice(dynStart) : '';
+  add('C622', 'LNT-8：platform-colors 的 DynamicColorIOS 分支用 properties.forEach + return（只跳过当前属性），而 PlatformColor 分支是「报一次即 return」—— 两个分支的报错次数语义不同',
+    'DynamicColorIOS 用 forEach',
+    'forEach:' + dynBlock.includes('properties.forEach(property => {') +
+      ' / PlatformColor 分支用 every+return:' + platColors.includes('!args.every('),
+    dynBlock.includes('properties.forEach(property => {') &&
+      platColors.includes('!args.every('));
+
+  // ── LNT-9：messageId 语病 ──
+  add('C623', 'LNT-9：platform-colors 的 platformColorArgTypes 文案缺了 must（其余三条 messageId 都是完整句式）',
+    '文案缺 must',
+    platColors.includes("'PlatformColor() every argument must be a literal.'") ? '命中' : '未命中',
+    platColors.includes("'PlatformColor() every argument must be a literal.'") &&
+      platColors.includes("'PlatformColor() must have at least one argument that is a literal.'"));
+
+  // ── LNT-10：刻意拼接以避开扫描 ──
+  add('C624', 'LNT-10：eslint-plugin-specs 的 isGeneratedFile 用 "@" + "generated SignedSource<<" 拼接来检测生成文件 —— 拼接本身无技术必要，作用是让按字面量扫描该字符串的工具扫不到（与 67 文档 GGG-1「该约定全仓零校验」构成同一约定的两种态度）',
+    '存在刻意拼接',
+    specModules.includes(".indexOf('@' + 'generated SignedSource<<')") ? '命中' : '未命中',
+    specModules.includes(".indexOf('@' + 'generated SignedSource<<')") &&
+      !specModules.includes(".indexOf('@generated SignedSource<<')"));
+
+  // ── LNT-11：prepack/postpack 的精确字符串替换 ──
+  add('C625', 'LNT-11：eslint-plugin-specs 的 prepack/postpack 用精确字符串替换改 PACKAGE_USAGE 常量（false→true / true→false），而 String.replace 找不到匹配时原样返回、不抛错 —— 替换失败是静默的',
+    '两侧都是精确字符串替换',
+    'prepack:' + prepack.includes("'const PACKAGE_USAGE = false;',") +
+      ' / postpack:' + postpack.includes("'const PACKAGE_USAGE = true;',") +
+      ' / 无成功校验:' + !prepack.includes("if (result === source)") && !postpack.includes("if (result === source)"),
+    prepack.includes("source.replace(\n    'const PACKAGE_USAGE = false;',\n    'const PACKAGE_USAGE = true;',\n  )") &&
+      postpack.includes("source.replace(\n    'const PACKAGE_USAGE = true;',\n    'const PACKAGE_USAGE = false;',\n  )") &&
+      !prepack.includes('if (result === source)'));
+
+  // ── LNT-12：mtime 毫秒缓存 + 污染返回对象 ──
+  add('C626', 'LNT-12：with-babel-register 的编译缓存以毫秒级 mtime（+fs.statSync(f).mtime）为键，且把 mtime 挂在 Babel transformSync 的返回对象上（污染第三方对象）；finally 里撤销 require hook 是对的',
+    '毫秒 mtime + 挂在返回对象上 + finally 撤销',
+    'mtime:' + babelReg.includes('return +fs.statSync(filename).mtime;') +
+      ' / 挂到 output:' + babelReg.includes('output.mtime = mtime(filename);') +
+      ' / finally 撤销:' + babelReg.includes('} finally {\n    revertHook();'),
+    babelReg.includes('return +fs.statSync(filename).mtime;') &&
+      babelReg.includes('output.mtime = mtime(filename);') &&
+      babelReg.includes('} finally {\n    revertHook();'));
+
+  // ── LNT-13：__test_fixtures__ 被计入覆盖范围 ──
+  const fixturesCount = ['packages/babel-plugin-codegen/__test_fixtures__/fixtures.js', 'packages/babel-plugin-codegen/__test_fixtures__/failures.js']
+    .filter(p => exists(p)).length;
+  add('C627', 'LNT-13：babel-plugin-codegen 的 __test_fixtures__ 目录（2 个文件 / 430 行）被计入「非测试代码文件」—— 覆盖范围的测试目录过滤规则不匹配 __test_fixtures__，因此测试夹具被算作源码',
+    '两个夹具文件存在且目录名不是 __tests__',
+    '夹具文件数: ' + fixturesCount + ' / 目录名: __test_fixtures__',
+    fixturesCount === 2 && exists('packages/babel-plugin-codegen/__test_fixtures__/fixtures.js'));
+
+  // ── LNT-14：lazy-imports 与 index.js 的脱节（实测比对）──
+  const lazyEntries = [...lazyImports.matchAll(/^\s*'([^']+)',/gm)].map(m => m[1]);
+  const lazySet = new Set(lazyEntries);
+  const rnIndex = read('packages/react-native/index.js') ?? '';
+  const rnExports = [...rnIndex.matchAll(/get\s+([A-Za-z0-9_]+)\s*\(\)/g)].map(m => m[1]);
+  const missing = rnExports.filter(n => !lazySet.has(n));
+  const extra = [...lazySet].filter(n => !rnExports.includes(n));
+  const dupCount = lazyEntries.length - lazySet.size;
+  add('C628', 'LNT-14 核心：babel-preset 的 lazy-imports 清单自称「Keep this list in sync with react-native/index.js」，实测脱节 —— index.js 的导出有 36 个不在清单里、清单有 10 个是 index.js 已无的死条目、且 ReactNative 重复出现两次',
+    '缺失 36 / 死条目 10 / 重复 1',
+    'index.js 导出: ' + rnExports.length + ' / 清单条目: ' + lazySet.size +
+      ' / 缺失: ' + missing.length + ' / 死条目: ' + extra.length + ' / 重复: ' + dupCount,
+    missing.length === 36 && extra.length === 10 && dupCount === 1 &&
+      lazyImports.includes('// react-native/index.js (though having extra entries here is fairly harmless).'));
+
+  // ── LNT-15：Platform.select({}) → undefined ──
+  add('C629', 'LNT-15：inline-platform-plugin 的 hasStaticProperties 用 every（对空数组返回 true），因此 Platform.select({}) 通过检查；回退链 platform→native→default 全部落空后，整个调用被替换成标识符 undefined',
+    '回退链终点是 t.identifier("undefined")',
+    inlinePlat.includes("findProperty(spec, 'default', () => t.identifier('undefined'))") ? '命中' : '未命中',
+    inlinePlat.includes("findProperty(spec, 'default', () => t.identifier('undefined'))") &&
+      inlinePlat.includes('return objectExpression.properties.every(property => {') &&
+      inlinePlat.includes("path.replaceWith(t.stringLiteral(platform));"));
+
+  // ── LNT-16：警告分组追加 ──
+  add('C630', 'LNT-16：warn-on-deep-imports 把 require / import / export 三类警告各自收集后按固定顺序追加到程序体末尾 —— 警告顺序与它们在源码里的位置无关（原始 loc 由 withLocation 保留）',
+    '三类分组后合并追加',
+    warnDeep.includes('...requireWarnings,\n          ...importWarnings,\n          ...exportWarnings,') ? '命中' : '未命中',
+    warnDeep.includes('...requireWarnings,') &&
+      warnDeep.includes('...importWarnings,') &&
+      warnDeep.includes('...exportWarnings,') &&
+      warnDeep.includes('body.push(...warnings);') &&
+      warnDeep.includes('function withLocation(node, loc) {'));
+
+  // ── LNT-19：getBabelRC 不按 projectRoot 分键 ──
+  const gbrStart = transformer.indexOf('const getBabelRC = (function () {');
+  const gbrBlock = transformer.slice(gbrStart, transformer.indexOf('function buildBabelConfig'));
+  add('C631', 'LNT-19 核心：react-native-babel-transformer 的 getBabelRC 用模块级单例 babelRC 记忆化，判空条件只有 babelRC != null —— projectRoot 与 extendsBabelConfigPath 都不参与键的构造；缓存键 cacheKeyParts 同样不含 projectRoot',
+    '缓存判空不含 projectRoot，且缓存键也不含',
+    '判空:' + gbrBlock.includes('if (babelRC != null) {\n      return babelRC;') +
+      ' / 缓存键:' + transformer.includes('const cacheKeyParts = [getPresetCacheKey(), fs.readFileSync(__filename)];'),
+    gbrBlock.includes('if (babelRC != null) {\n      return babelRC;') &&
+      !gbrBlock.includes('babelRC != null &&') &&
+      transformer.includes('const cacheKeyParts = [getPresetCacheKey(), fs.readFileSync(__filename)];') &&
+      !transformer.includes('cacheKeyParts = [getPresetCacheKey(), options.projectRoot') &&
+      gbrBlock.includes('projectRoot,') &&
+      gbrBlock.includes('babelRC.presets = ['));
+
+  // ── LNT-20：envName 的 BABEL_ENV 优先 ──
+  add('C632', 'LNT-20：babel-transformer 的 envName 在非 dev 时取 process.env.BABEL_ENV || "production" —— 环境变量会静默改变所有生产构建的 env，进而影响 preset 里 babel.env("development") 的判定',
+    'BABEL_ENV 优先于 production',
+    transformer.includes("process.env.BABEL_ENV || 'production'") ? '命中' : '未命中',
+    transformer.includes("envName: options.dev\n      ? 'development'\n      : process.env.BABEL_ENV || 'production',") &&
+      presetMain.includes("const dev = options.dev ?? babel?.env('development') ?? false;"));
+
+  // ── LNT-21：codegen 的两处边界 ──
+  add('C633', 'LNT-21：babel-plugin-codegen 的 parseFile 用 endsWith("js") 判定（同时匹配 .mjs/.cjs，会被当 Flow 解析），且 generateViewConfig 的 libraryName 用 String.replace 去掉 NativeComponent.(js|ts) 但不校验是否命中（未命中时 libraryName 保留扩展名）',
+    'endsWith("js") + replace 无命中校验',
+    'endsWith:' + codegen.includes("if (filename.endsWith('js')) {") +
+      ' / replace:' + codegen.includes('/NativeComponent\\.(js|ts)$/') +
+      ' / 无命中校验:' + !codegen.includes('if (libraryName === basename(filename))'),
+    codegen.includes("if (filename.endsWith('js')) {") &&
+      codegen.includes("const libraryName = basename(filename).replace(") &&
+      !codegen.includes('if (libraryName === basename(filename))') &&
+      codegen.includes("require('@react-native/codegen/lib/parsers/flow/parser').FlowParser;"));
+
+  // ── 文档侧 ──
+  addDocClaim('D249', '78 文档写明 eslintrc 与 flat 两种配置格式的 files glob 宽度不同',
+    /两种配置格式/, {min: 1});
+  addDocClaim('D250', '78 文档写明 shared.js 有一处配置文本损坏导致规则静默失效',
+    /配置文本损坏/, {min: 1});
+  addDocClaim('D251', '78 文档写明 lazy-imports 与 index.js 有 36 个导出缺失',
+    /36 个导出缺失/, {min: 1});
+  addDocClaim('D252', '78 文档写明 getBabelRC 的缓存不按 projectRoot 分键',
+    /不按\s*`?projectRoot`?\s*分键/, {min: 1});
+  addDocClaim('D253', '78 文档写明 ESLint 与 Babel 的 deep-import 判定不一致',
+    /判定不一致/, {min: 1});
+  addDocClaim('D254', '78 文档写明 __test_fixtures__ 被计入覆盖范围',
+    /__test_fixtures__/, {min: 1});
+  addDocClaim('D255', '78 文档写明 prepack/postpack 的替换失败是静默的',
+    /静默失效|静默失败/, {min: 1});
+  addDocClaim('D256', '「静默失效」这一形态在多个文档中被反复引用',
+    /静默失效/, {min: 3});
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // 报告
 // ────────────────────────────────────────────────────────────────────────
 const fail = checks.filter(c => !c.ok);
