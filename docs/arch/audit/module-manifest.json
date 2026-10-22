@@ -152,7 +152,7 @@
         "packages/react-native/ReactCommon/cxxreact"
       ],
       "fileCount": 52,
-      "readFiles": 45,
+      "readFiles": 46,
       "status": "partial",
       "docs": [
         "03",
@@ -160,10 +160,11 @@
         "66",
         "69",
         "71",
-        "74"
+        "74",
+        "76"
       ],
-      "note": "A6 已读 45。本轮读 performance/timeline/PerformanceObserver.h+.cpp + mapbuffer/MapBufferBuilder.h+.cpp",
-      "gap": 7,
+      "note": "A6 已读 45。本轮读 performance/timeline/PerformanceObserver.h+.cpp + mapbuffer/MapBufferBuilder.h+.cpp；76 文档另完整通读 ReactCommon/cxxreact/JSBigString.h（isAscii / size 的基类契约）",
+      "gap": 6,
       "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
     },
     {
@@ -600,17 +601,18 @@
         "packages/babel-plugin-codegen"
       ],
       "fileCount": 188,
-      "readFiles": 49,
+      "readFiles": 62,
       "status": "partial",
       "docs": [
         "62",
         "63",
         "67",
         "72",
-        "75"
+        "75",
+        "76"
       ],
-      "note": "目录声明已清理：ReactAppDependencyProvider / react-native-gradle-plugin / react-native-assets / renderer/trace 在本 commit 已不存在。本轮读 packages/debugger-shell/ 全部 12 个非测试文件（入口分叉 / node 变体 / electron 变体 / 窗口与菜单 / 配置持久化 / preload），产出 75 文档",
-      "gap": 139,
+      "note": "目录声明已清理：ReactAppDependencyProvider / react-native-gradle-plugin / react-native-assets / renderer/trace 在本 commit 已不存在。本轮读 packages/debugger-shell/ 全部 12 个非测试文件（产出 75 文档）；再读 private/core-cli-utils/ 8 个 + packages/react-native/React/CxxBridge/ 5 个（产出 76 文档）",
+      "gap": 126,
       "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
     },
     {
@@ -884,7 +886,7 @@
           "A6",
           "Z1"
         ],
-        "gap": 147
+        "gap": 133
       },
       {
         "n": 1,
@@ -990,7 +992,7 @@
         "gap": 234
       }
     ],
-    "totalGap": 3072
+    "totalGap": 3058
   },
   "docsIndex": {
     "07": {

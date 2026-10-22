@@ -12105,6 +12105,234 @@ addDocClaim('D217', '文档给出了哈希契约违反在 AttributedString 一�
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// 76 文档 · CLI 工具层（private/core-cli-utils）+ legacy 桥 CxxBridge
+//   CLI-1 … CLI-16
+// ────────────────────────────────────────────────────────────────────────
+{
+  const CU = 'private/core-cli-utils/src';
+  const CB = 'packages/react-native/React/CxxBridge';
+
+  const andr = read(CU + '/private/android.js') ?? '';
+  const apple = read(CU + '/private/apple.js') ?? '';
+  const app = read(CU + '/private/app.js') ?? '';
+  const clean = read(CU + '/private/clean.js') ?? '';
+  const utils = read(CU + '/private/utils.js') ?? '';
+  const ver = read(CU + '/public/version.js') ?? '';
+  const cuPkg = JSON.parse(read('private/core-cli-utils/package.json') ?? '{}');
+  const ndsH = read(CB + '/NSDataBigString.h') ?? '';
+  const ndsM = read(CB + '/NSDataBigString.mm') ?? '';
+  const rmt = read(CB + '/RCTMessageThread.mm') ?? '';
+  const cxb = read(CB + '/RCTCxxBridgeDelegate.h') ?? '';
+  const jbs = read('packages/react-native/ReactCommon/cxxreact/JSBigString.h') ?? '';
+
+  // ── CLI-1：assemble 构造了 args 却传 gradleArgs ──
+  const asmBlock = andr.slice(
+    andr.indexOf('assemble: (...gradleArgs /*: Args */) => ({'),
+    andr.indexOf('build: (...gradleArgs /*: Args */) => ({'),
+  );
+  add('C581', 'CLI-1 核心：android.js 的 assemble 构造了 -PhermesEnabled / -PnewArchEnabled 的 args 数组，却把 gradleArgs 传给 gradle() —— args 从未被使用；同文件的 build 传的是 args',
+    'assemble 传 gradleArgs 且 args 未被使用，build 传 args',
+    'assemble 用 gradleArgs:' + asmBlock.includes('gradle(`${config.name}:assemble${config.mode}`, gradleArgs,') +
+      ' / build 用 args:' + andr.includes('gradle(`${config.name}:bundle${config.mode}`, args,'),
+    asmBlock.includes('args.push(`-PhermesEnabled=${boolToStr(config.hermes)}`);') &&
+      asmBlock.includes('gradle(`${config.name}:assemble${config.mode}`, gradleArgs,') &&
+      !asmBlock.includes('assemble${config.mode}`, args,') &&
+      andr.includes('gradle(`${config.name}:bundle${config.mode}`, args,'));
+
+  // ── CLI-2：清理的扫描基准是父目录 ──
+  add('C582', 'CLI-2 核心：deleteDirectoryContents 用 path.dirname(directory) 作为扫描基准 —— 函数名与注释都说清理「该目录的内容」，实现却用其父目录；deleteTmpDirectoryContents 传的是 os.tmpdir()',
+    'base = path.dirname(directory)',
+    clean.includes('const base = path.dirname(directory);') ? '匹配' : '不匹配',
+    clean.includes('const base = path.dirname(directory);') &&
+      clean.includes('return deleteDirectoryContents(os.tmpdir(), filepattern);') &&
+      !clean.includes('const base = directory;'));
+
+  // ── CLI-3：fs.rm 不带 callback ──
+  add('C583', 'CLI-3 核心：rmrf 调用 fs.rm 时既不传 callback 也不 await —— 实测 Node v24.22.1 下它返回 undefined（不是 Promise）并在异步回调里抛未捕获 TypeError: callback is not a function',
+    'fs.rm 调用无 callback',
+    'rm 调用:' + clean.includes('rm(pathname, {force: true, maxRetries: 3, recursive: true});') +
+      ' / 未用 promises.rm:' + !clean.includes('fs.promises.rm') +
+      ' / 未 await:' + !clean.includes('await rm('),
+    clean.includes('rm(pathname, {force: true, maxRetries: 3, recursive: true});') &&
+      !clean.includes('promises.rm') &&
+      !clean.includes('await rm(') &&
+      clean.includes('if (!existsSync(pathname)) {'));
+
+  // ── CLI-4：-o 被拼成单个 argv ──
+  const csm = read('packages/react-native/scripts/compose-source-maps.js') ?? '';
+  add('C584', 'CLI-4 核心：app.js 把 "-o " + 输出路径拼成单个 argv 元素，而 compose-source-maps.js 严格比对 argv[i] === "-o" 并从 argv[i+1] 取值 —— outputPath 恒为 undefined，合成后的 source map 从不写出',
+    '调用侧单元素 + 被调用侧严格比对 -o',
+    '调用侧:`-o ${...}`:' + app.includes('`-o ${options.outputSourceMap}`,') +
+      ' / 被调用侧严格比对:' + csm.includes("if (argv[i] === '-o') {") +
+      ' / 写出受 outputPath != null 约束:' + csm.includes('if (outputPath != null) {'),
+    app.includes('`-o ${options.outputSourceMap}`,') &&
+      csm.includes("if (argv[i] === '-o') {") &&
+      csm.includes('if (outputPath != null) {'));
+
+  // ── CLI-5：require.resolve 的 {cwd} 选项 ──
+  const gnpBody = t => {
+    const s0 = t.indexOf('function getNodePackagePath');
+    return t.slice(s0, t.indexOf('\n}', s0) + 2);
+  };
+  const gnpApp = gnpBody(app);
+  const gnpApple = gnpBody(apple);
+  const bothCwd =
+    gnpApp.includes('require.resolve(packageName, {cwd: [process.cwd(), ...module.paths]})') &&
+    gnpApple.includes('require.resolve(packageName, {cwd: [process.cwd(), ...module.paths]})');
+  add('C585', 'CLI-5 核心：getNodePackagePath 用 require.resolve 的 {cwd: [...]} 选项（Node 只认 paths，该选项被静默忽略），且该函数在 app.js 与 apple.js 中有逐字相同的两份副本',
+    '两份副本都用 {cwd:[...]}，全仓不出现 {paths: [...]} 之外的写法',
+    'app.js 用 cwd:' + gnpApp.includes('{cwd: [process.cwd(), ...module.paths]}') +
+      ' / apple.js 用 cwd:' + gnpApple.includes('{cwd: [process.cwd(), ...module.paths]}'),
+    bothCwd && gnpApp === gnpApple);
+
+  // ── CLI-6：execa / debug 未声明 ──
+  const declared = Object.keys(cuPkg.dependencies ?? {});
+  const pkgRoots = ['packages', 'private', 'scripts'];
+  const execaDecliners = [];
+  const walkPkgs = dir => {
+    let ents;
+    try { ents = fs.readdirSync(dir, {withFileTypes: true}); } catch { return; }
+    for (const e of ents) {
+      if (e.name === 'node_modules' || e.name === '.git') continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { walkPkgs(p); continue; }
+      if (e.name !== 'package.json') continue;
+      const rel = path.relative(REPO, p);
+      try {
+        const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+        const all = Object.assign({}, j.dependencies, j.devDependencies, j.peerDependencies);
+        if (all.execa) execaDecliners.push(rel);
+      } catch {}
+    }
+  };
+  pkgRoots.forEach(r => walkPkgs(path.join(REPO, r)));
+  add('C586', 'CLI-6 核心：core-cli-utils 只声明了 metro-babel-register，而 execa / debug 是未声明依赖 —— 全仓没有任何 package.json 声明 execa，它只作为 @react-native-community/cli* 与 jest-changed-files 的传递依赖存在',
+    '本包未声明 execa/debug，且全仓无 package.json 声明 execa',
+    '本包声明:' + declared.join(',') +
+      ' / 全仓声明 execa 的包数:' + execaDecliners.length,
+    !declared.includes('execa') && !declared.includes('debug') && execaDecliners.length === 0);
+
+  // ── CLI-7：isOnPath 的 exitCode === 0 是死判定 ──
+  add('C587', 'CLI-7 核心：isOnPath 用 execa.sync(...).exitCode === 0 判定「找到」—— 但 execa 5.1.1 在非零退出时抛异常（实测 err.exitCode=3），该比较从未产生过 false；判定实际由 catch 分支决定',
+    '判定式为 exitCode === 0，且存在 catch 兜底',
+    utils.includes('found: execa.sync(...cmd).exitCode === 0,') ? '匹配' : '不匹配',
+    utils.includes('found: execa.sync(...cmd).exitCode === 0,') &&
+      utils.includes('} catch {') &&
+      utils.includes('found: false,'));
+
+  // ── CLI-8：注释指向不存在的入口 ──
+  const cuExports = Object.keys(cuPkg.exports ?? {});
+  add('C588', 'CLI-8 核心：version.js 的注释让使用者 require("@react-native/core-cli-utils/versions.js")，而 exports 里只有 ./version.js（单数）—— 按注释写会抛 ERR_PACKAGE_PATH_NOT_EXPORTED；注释里的包名还少了个 s',
+    'exports 无 ./versions.js，注释却引用它',
+    'exports 键:' + cuExports.join(',') +
+      ' / 注释引用 versions.js:' + ver.includes("require('@react-native/core-cli-utils/versions.js')"),
+    !cuExports.includes('./versions.js') &&
+      cuExports.includes('./version.js') &&
+      ver.includes("require('@react-native/core-cli-utils/versions.js')") &&
+      ver.includes('@react-native/core-cli-util@latest'));
+
+  // ── CLI-9：发布的 NODE_JS 比自身 engines 宽松 ──
+  const nodeReq = /NODE_JS:\s*'([^']+)'/.exec(ver)?.[1] ?? '';
+  add('C589', 'CLI-9 核心：version.js 发布的 NODE_JS 要求（>= 18）比 core-cli-utils 自己的 engines.node（^22.13.0 || ^24.3.0 || >= 26.0.0）更宽松 —— 这张表是给使用者自查环境用的，会放行跑不起来的环境',
+    'NODE_JS >= 18 且 engines 要求 >= 22.13',
+    'NODE_JS:' + nodeReq + ' / engines:' + (cuPkg.engines?.node ?? ''),
+    nodeReq === '>= 18' &&
+      /22\.13\.0/.test(cuPkg.engines?.node ?? '') &&
+      /26\.0\.0/.test(cuPkg.engines?.node ?? ''));
+
+  // ── CLI-10：try 内自抛自捕 ──
+  const podBlock = apple.slice(apple.indexOf('function checkPodfileInSyncWithManifest'), apple.indexOf('function checkPodfileInSyncWithManifest') + 700);
+  add('C590', 'CLI-10 核心：checkPodfileInSyncWithManifest 在 try 块内抛出「Podfile.lock and Pods/Manifest.lock are out of sync」，却被同函数的 catch 捕获并重新包装 —— 两条命令提示不一致（yarn bootstrap ios vs yarn run bootstrap ios）',
+    'try 内有 throw，catch 重新包装，且两条命令提示不同',
+    'try 内 throw:' + podBlock.includes('throw new Error(') +
+      ' / catch 重新包装:' + podBlock.includes("throw new Error('Please run: yarn run bootstrap ios: ' + String(e));") +
+      ' / 内层命令:' + (podBlock.includes('yarn bootstrap ios,') ? 'yarn bootstrap ios' : '其它'),
+    podBlock.includes('throw new Error(') &&
+      podBlock.includes("'Please run: yarn run bootstrap ios: ' + String(e)") &&
+      podBlock.includes('yarn bootstrap ios,') &&
+      podBlock.includes('} catch (e /*: unknown */) {'));
+
+  // ── CLI-11：metro 的两个恒定开关 ──
+  add('C591', 'CLI-11：metro() 恒带 --offline（npx 永不联网取包），且 metro build 的参数数组恒带 --reset-cache（无任何条件分支）',
+    '两处恒定开关均存在',
+    '--offline:' + app.includes("execa('npx', ['--offline', 'metro', ...args])") +
+      ' / --reset-cache:' + app.includes("'--reset-cache',"),
+    app.includes("execa('npx', ['--offline', 'metro', ...args])") &&
+      app.includes("'--reset-cache',"));
+
+  // ── CLI-12：iOS 侧 isAscii 恒 false ──
+  add('C592', 'CLI-12 核心：iOS 侧 NSDataBigString::isAscii() 恒返回 false（注释「The ASCII optimization is not enabled on iOS」）—— 补上 71 文档 KKK-1 缺失的平台维度：Android 走恒 true 的 C++ 实现，iOS 走恒 false 的 ObjC 实现',
+    'isAscii 实现恒返回 false',
+    ndsH.includes('bool isAscii() const override') && ndsH.includes('return false;') ? '匹配' : '不匹配',
+    ndsH.includes('// The ASCII optimization is not enabled on iOS') &&
+      ndsH.includes('bool isAscii() const override') &&
+      ndsH.includes('return false;'));
+
+  // ── CLI-13：size() 违反基类「不含 NUL」契约 ──
+  add('C593', 'CLI-13 核心：基类 JSBigString 明确要求 size() 是「Length of the c_str without the NULL byte」，而 NSDataBigString::size() 返回 NSData 的长度（m_length = [m_data length]），含结尾 NUL —— 多 1；且 null 结尾的前置条件只写在头注释里，无校验',
+    '基类注释含 without the NULL byte，且实现返回 m_length',
+    '基类契约:' + jbs.includes('// Length of the c_str without the NULL byte.') +
+      ' / 实现:' + ndsH.includes('return m_length;') +
+      ' / m_length 来自 NSData:' + ndsM.includes('m_length = [m_data length];'),
+    jbs.includes('// Length of the c_str without the NULL byte.') &&
+      jbs.includes('// This needs to be a \\0 terminated string') &&
+      ndsH.includes('return m_length;') &&
+      ndsM.includes('m_length = [m_data length];') &&
+      ndsH.includes('// The NSData passed in must be be null-terminated.'));
+
+  // ── CLI-14：无界等待与其自认的前置条件 ──
+  add('C594', 'CLI-14 核心：RCTMessageThread::runSync 用 dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER) 无界等待，而其成立的前置条件（sync 只用于 setup/teardown、quitSynchronous 必被调用）只在析构函数里用 RCTAssert 检查；runSync 自身不检查 m_shutdown',
+    '无界等待 + 析构断言 + runSync 不检查 m_shutdown',
+    'DISPATCH_TIME_FOREVER:' + rmt.includes('dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);') +
+      ' / 析构 RCTAssert:' + rmt.includes('RCTMessageThread: quitSynchronous() not called before destructor') +
+      ' / 前置条件注释:' + rmt.includes('quitSynchronous is guaranteed to be called'),
+    rmt.includes('dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);') &&
+      rmt.includes('RCTMessageThread: quitSynchronous() not called before destructor') &&
+      rmt.includes('quitSynchronous is guaranteed to be called') &&
+      !rmt.slice(rmt.indexOf('void RCTMessageThread::runSync'), rmt.indexOf('void RCTMessageThread::tryFunc')).includes('m_shutdown'));
+
+  // ── CLI-15：默认执行器契约 ──
+  add('C595', 'CLI-15：RCTCxxBridgeDelegate 的注释写明「If not implemented, or returns an empty pointer, JSIExecutorFactory will be used with a JSCRuntime」—— 默认执行器是 JSI + JSCRuntime',
+    '注释声明默认执行器',
+    cxb.includes('JSIExecutorFactory') && cxb.includes('will be used with a JSCRuntime') ? '匹配' : '不匹配',
+    cxb.includes('If not implemented, or returns an empty pointer, JSIExecutorFactory') &&
+      cxb.includes('will be used with a JSCRuntime.') &&
+      cxb.includes('jsExecutorFactoryForBridge:(RCTBridge *)bridge'));
+
+  // ── CLI-16：order 被真实消费 ──
+  const rnUtils = read('packages/rn-tester/scripts/utils.js') ?? '';
+  add('C596', 'CLI-16：Task.order 被真实消费 —— rn-tester 的 run() 按 a.order - b.order 排序后再交给 Listr；正确性依赖 ES2019+ 的稳定排序（app.js 里三个任务同为 order:1、apple.js 里两个同为 FIRST，档内次序由键序决定）',
+    '存在按 order 排序的消费方',
+    rnUtils.includes('ordered = ordered.sort((a, b) => a.order - b.order);') ? '匹配' : '不匹配',
+    rnUtils.includes('ordered = ordered.sort((a, b) => a.order - b.order);') &&
+      rnUtils.includes('title: task.label,') &&
+      utils.includes('order,') &&
+      app.includes('const FIRST = 1,'));
+
+  // ── 文档侧 ──
+  addDocClaim('D231', '76 文档写明 assemble 构造了 -PhermesEnabled 却没传出去',
+    /构造了\s*`-PhermesEnabled`.*却没传|却把\s*`gradleArgs`\s*传给/, {min: 1});
+  addDocClaim('D232', '76 文档写明缓存清理扫的是目标目录的父目录',
+    /父目录/, {min: 1});
+  addDocClaim('D233', '76 文档写明 fs.rm 不带 callback 会异步抛未捕获异常',
+    /不带 callback|缺 callback/, {min: 1});
+  addDocClaim('D234', '76 文档写明 -o 被拼成单个 argv 导致 source map 不产出',
+    /拼成.*单个\s*argv|单个 argv/, {min: 1});
+  addDocClaim('D235', '76 文档写明 require.resolve 不支持 cwd 选项',
+    /`require\.resolve`.*不支持.*`\{cwd\}`|只认\s*`paths`/, {min: 1});
+  addDocClaim('D236', '76 文档写明 iOS 侧 isAscii 恒返回 false 并补上平台维度',
+    /恒返回\s*`false`.*平台维度|补上.*平台维度/, {min: 1});
+  addDocClaim('D237', '76 文档写明 runSync 的无界等待与自认的前置条件',
+    /无界等待/, {min: 1});
+  addDocClaim('D238', '76 文档写明发布的 NODE_JS 要求比自身 engines 更宽松',
+    /更宽松/, {min: 1});
+  addDocClaim('D239', '76 文档写明 execa 是未声明依赖',
+    /未声明依赖/, {min: 1});
+  addDocClaim('D240', '「注释描述的能力不存在」这一形态在多个文档中被反复引用',
+    /注释描述的.{0,4}不存在/, {min: 2});
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // 报告
 // ────────────────────────────────────────────────────────────────────────
 const fail = checks.filter(c => !c.ok);
