@@ -6,13 +6,13 @@
 
 ## 检索入口
 
-> **本目录 63 篇文档按「主题 → 症状 → 结论 → 符号」四条路径组织，全部索引由脚本生成，禁止手写。**
+> **本目录 75 篇文档按「主题 → 症状 → 结论 → 符号」四条路径组织，全部索引由脚本生成，禁止手写。**
 
 | 入口 | 用途 | 从哪开始 |
 | --- | --- | --- |
-| **[00 · 主题地图](./INDEX/00-主题地图.md)** | **按主题域/子主题浏览** —— 8 个主题域、27 个子主题，每个子主题下列出覆盖它的文档、涉及的现象、平台与关键结论数量 | 「我要搞懂某个子系统」 |
+| **[00 · 主题地图](./INDEX/00-主题地图.md)** | **按主题域/子主题浏览** —— 8 个主题域、37 个子主题，每个子主题下列出覆盖它的文档、涉及的现象、平台与关键结论数量 | 「我要搞懂某个子系统」 |
 | **[01 · 症状排查手册](./INDEX/01-症状排查手册.md)** | **按现象排查** —— 17 类症状（崩溃/白屏/OOM/泄漏/启动变慢/卡顿/内容增长过快/布局/手势/动画/文本/桥接/属性/构建/调试/无障碍），每类列出相关文档与结论编号 | 「我遇到了某个问题」 |
-| **[02 · 结论速查表](./INDEX/02-结论速查表.md)** | **按结论编号直达** —— 全部 **318 条**编号结论（`ZZ-1` / `AAA-1` / `BBB-2` / `CCC-15` …）的摘要、源码位置与所属文档 | 「我记得有个结论编号」 |
+| **[02 · 结论速查表](./INDEX/02-结论速查表.md)** | **按结论编号直达** —— 全部 **461 条**编号结论（`ZZ-1` / `AAA-1` / `BBB-2` / `CCC-15` …）的摘要、源码位置与所属文档 | 「我记得有个结论编号」 |
 | **[03 · 符号与源码入口](./INDEX/03-符号与源码入口.md)** | **按符号/模块目录检索** —— 关键类与函数 → 讲解它的文档；模块 → 已读/缺口/文档 | 「我知道源码里的某个类」 |
 
 **每篇文档的 front-matter**（`topic` / `symptoms` / `symbols` / `claims` / `platforms` / `architecture` / `layer`）
@@ -99,6 +99,7 @@
 | [72-渲染器调试字符串机制与两个同名flags.md](./72-渲染器调试字符串机制与两个同名flags.md) | **【LLL-1 核心】`DebugStringConvertibleOptions::maximumDepth` 默认是 `INT_MAX`** —— 而 `getDebugDescription`（children 递归完整子树）/ `getDebugPropsDescription`（props 只递归 props）是**递归**的 → **默认无限深度**；**与 64 文档 DDD-2 同型的栈溢出路径**（那里完全无保护、这里有保护但默认等于没有），**严重性低一个量级**（仅内部诊断路径，非 JS 可达），**修复成本极低**（默认值改成有限值）；另 **字符串拼接是 O(n²)**（逐子节点 `+=`）→ **大子树时明显变慢，而那正是调试工具最需要的场景** | **【LLL-2 核心】类的形状随构建配置变化**：release 下 `DebugStringConvertible` 是**无虚函数的空类**、`DebugStringConvertibleOptions` 是**空结构体** → **子类的 `override` 声明必须手工包在 `#if RN_DEBUG_STRING_CONVERTIBLE` 里**（`TextAttributes.h` 的 112-116 行 是实例）→ **每个子类都要重复同样的 `#if`，忘记包则 release 编译失败（可被发现）、包错宏则特定构建失败**；**好消息：release 下基类无虚表 → 反而更省** ✓（有意的取舍）；**【LLL-6】注释声明该 class 已 obsolete，实际仍被大量继承**（59 文档同型但方向相反） | **【LLL-3/LLL-4 核心】两个同名 `flags.h` 内容完全不同**（`react/debug/flags.h` 24 行定义 `REACT_NATIVE_DEBUG` vs `renderer/debug/flags.h` 49 行定义 `RN_DEBUG_STRING_CONVERTIBLE`），**后者含 3 个与本目录无关的 LayoutAnimations/StubViewTree 开关（复制残留）**；**且开关的「声明」与「使用点」分处两者之中** —— `LAYOUT_ANIMATION_VERBOSE_LOGGING` 声明在 `renderer/debug/flags.h`，而使用点 `LayoutAnimationKeyFrameManager.cpp` **直接 include 的是 `react/debug/flags.h`** → **生效靠 `LayoutMetrics.h` 的传递包含**（已逐步核实该链条）→ **一旦该 include 被重构掉，开关静默失效、无编译错误**；**【LLL-10 正向】「默认关闭、需手工开启」是一等公民机制**（3 个开关都有真实 `#ifdef` 使用点），**只是上述错位削弱了可发现性** |
 | [73-LogBox的JS侧与双实现对照.md](./73-LogBox的JS侧与双实现对照.md) | **【MMM-1 核心】同一个「解析错误消息里的行号」的任务，JS 用 `parseInt`（**实测 20 位数字 → `100000000000000000000`，静默出错**）、C++ 用 `std::stoi`（**抛未捕获异常**）** —— **两端失败模式不同，C++ 严格更差**（RedBox 解析器崩溃 → 错误根本显示不出来）；**三份实现、三种策略、无任何统一**（`from_chars` / `parseInt` / `stoi`）；**【MMM-2 核心】C++ 侧有 JS 侧完全没有的 `bundleLoadErrorRegex` 分支**（+ 4 种错误类型白名单）、**且缺少 JS 侧的「先廉价匹配」性能优化** —— **而 C++ 的注释自称「C++ port of parseLogBoxException」** → **「移植」的说法不准确（实为独立重写）**；**同一份消息在 iOS RedBox2 与 LogBox 里展示不同**，**JS 侧展示不出「Module Not Found」** | **【MMM-3 核心】`LogBoxSymbolication` 的 `cache` 是模块级 `const Map`，而 `LogBoxData.clear()` 只重建 `logs`** → **缓存与 log 集合的生命周期脱钩**，**无上限、无淘汰、无自动清理**；**【MMM-4】`logs` 本身是无上限 `Set`，但有两个自愈点**（有调试会话 → `clearWarnings()`；开始追踪 → `clear()`）→ **同为「无界容器」但风险分三档**（与 66 文档 FFF-1 做了分级对照）；**【MMM-7 正向】`retrySymbolicate` 会先 `deleteStack` 再重试** → **失败不会被永久缓存** ✓；**【MMM-8 正向】`sanitize` 对符号化返回值做完整校验**（非数组抛、`collapse` 非布尔抛）—— 与 65 文档 EEE-2 的 C++ 侧形成正反对照；**【MMM-10】记录了本轮一次「零命中」假阴性的自我纠错**：检索根用绝对形式却在子目录下执行 → 沿推理链放大成三条错误结论 → **固化纪律：检索必须在仓库根执行；「零命中」必须用另一条等价检索复核** |
 | [74-写方向与观察者的契约缺口.md](./74-写方向与观察者的契约缺口.md) | **【NNN-1 核心】写方向的 `header_.count` 是 `uint16_t` 且 `count++` 无上限检查** → 写超过 65535 个条目即**回绕** → **与 64 文档 DDD-3（读方向不校验）构成同一问题的两端**：写出的 buffer 的 count 与实际 bucket 数不符 → **读方向的二分查找上界 `hi = count_ - 1` 用错 → 越界读**；**【NNN-2 核心】写方向不检查重复 key**（`// TODO(T83483191): add pass to check for duplicates`）→ 读方向「找到第一个匹配就返回」→ **重复 key 且值不同时静默取到错误的值**（不是崩溃，更难发现）；**【NNN-3】值超限时 `abort()`**（不是抛异常）且**错误消息里的常量名（`MAX_VALUE_SIZE`）与实际常量名（`MAX_BUCKET_VALUE_SIZE`）不符** | **【NNN-4 核心】`PerformanceObserver` 的 `observedTypes_`（`unordered_set`）、`durationThreshold_`、`requiresDroppedEntries_` 三个成员无锁保护**，而 `buffer_` 与 registry 都有锁 → **并发读写 `unordered_set` 是 UB**；**「这个类有锁」会给人虚假的安全感** —— 比 69 文档「该加锁没加」更难发现；**【NNN-5 核心】两个 `observe` 重载语义不一致** —— 单类型版 `insert`（**累加**）+ 覆盖阈值、多类型版整体替换，**而注释明说「resets and overrides … remove any previous watch configuration (as per spec)」** → **注释与实现矛盾、与 spec 不符**；实际后果：连续 `observe(A,{t:100})` + `observe(B,{t:200})` → **A 类事件也开始用 200 阈值过滤** | **【NNN-6 核心】63 文档的「容差 vs 逐位」哈希契约违反在 `AttributedString` 一层继续传导**（四层链：`hash<AttributedString>` → `hash<Fragment>` → `hash<TextAttributes>` 逐位 ✗ vs `operator==` 链容差 ✓）→ **两个内容「相等」的富文本对象在哈希容器里是两个 key**；**但同时实测证明 `AttributedString`/`Fragment` 自身的字段集严格配对** → **即「问题不在这一层，而在被继承的下一层」**；另 **【NNN-7】observer 的 buffer 与 reporter 的无界 keyed 缓冲双份存储**、**【NNN-8】`getDroppedEntriesCount` 的「call time 快照」也拿不到 MARK/MEASURE 的丢弃信息**（66 文档盲区在两层都在）；**5 处正向样本**（`AttributedString` 字段集配对、三个比较函数语义分层、`scheduleFlushBuffer` 锁外回调、空 vector 的 memcpy 保护 + 第一档注释、`[[nodiscard]]`） |
+| [75-DevTools外壳的入口分叉与启动契约.md](./75-DevTools外壳的入口分叉与启动契约.md) | **【DSH-1 核心】入口分叉有两套判据且可能给出不同答案** —— `package.json` 的 `exports` 条件**按声明顺序**匹配（实测，含反序对照），`node` 写在 `electron` 之前 → **按包名解析命中 node 变体**；而 `packages/debugger-shell/src/index.js` 的运行时判断按 `process.versions.electron` 选 electron 变体 —— **全 RN 仓库只有这一个包用 `electron` 条件**，且 `publishConfig` 顺序相同（`prepack.js` 逐字段覆盖） | **【DSH-2 核心】`detached` 模式 Promise 在 `spawn` 即 resolve** → 后续 `close` 里的 `reject()` **失效** → **非零退出码无法经 Promise 上报**（`mode` 默认值就是 `detached`）；**【DSH-3 核心】`syncThenExit` 下 `silent` 为真时跳过 `process.exit(1)`** → 落到 `process.exit(null)` → **实测退出码 0** → **信号终止被报告为成功** | **【DSH-9 核心】实现与 `DevToolLauncher` 契约的三条 SHOULD 全部背离**（复用窗口无条件 `loadURL` 重载；`second-instance` 忽略第二实例的 `electronArgv` 改用第一实例的 `additionalData.argv`）—— **源码 TODO 自认**；**【DSH-5】错误分类完全依赖 fb-dotslash 的 stderr 英文子串**（4 个固定短语），上游改文案即静默降级；**【DSH-14】`SettingsStore.get` 的默认值语义是「值为 `undefined` 才回退」** → 配置里显式 `null` 会让调用方抛 `TypeError`；**【DSH-19】OSS 构建下 `BuildInfo.revision` 为 `null`** → 版本串 `0.87.0-main-null`；**【DSH-20】启动失败日志的 `?? 'Unknown error'` 兜底不可达**（`+` 优先级更高，实测）；**5 处正面样本**（`ELECTRON_RUN_AS_NODE` 剥离、错误码在消费端分 `logger.error`/`warn`、`BuildInfo.js.tpl` 的 ESM 互操作形状、4 个菜单命令 ID 在前端产物中均确认存在、`ui/legacy/legacy.js` 相对路径基准成立） |
 | [INDEX/](./INDEX/00-主题地图.md) | **检索索引（脚本生成）**：主题地图 / 症状排查手册 / 结论速查表 / 符号与源码入口 |
 | [audit/](./audit/) | 事实校验工具、模块覆盖清单与覆盖度分析（见下文「事实保证」） |
 
@@ -146,12 +147,12 @@ node docs/arch/audit/check-index.mjs       # 6) 索引体系：front-matter / �
 **当前状态（实测）：**
 
 ```
-引用 2813 条全部有效（2549 条带行号 + 264 条纯路径）
-代码块 1028 个 / 6963 行校验, 0 存疑
-文档间链接 513 条, 0 断链, 0 重复表格行
-核心事实断言 1501 条, 全部与源码一致
-索引  74 篇文档 / 8 个主题域 / 37 个子主题 / 17 类症状 / 441 条结论登记，0 问题
-已读 918 / 4176 个非测试代码文件（22.0%）
+引用 2916 条全部有效（2641 条带行号 + 275 条纯路径）
+代码块 1071 个 / 7275 行校验, 0 存疑
+文档间链接 518 条, 0 断链, 0 重复表格行
+核心事实断言 1533 条, 全部与源码一致
+索引  75 篇文档 / 8 个主题域 / 37 个子主题 / 17 类症状 / 461 条结论登记，0 问题
+已读 937 / 4176 个非测试代码文件（22.4%）
 ```
 
 > **重要**：前四项门禁只保证「引用的东西存在、贴的代码没造假」，
@@ -166,17 +167,17 @@ node docs/arch/audit/check-index.mjs       # 6) 索引体系：front-matter / �
 ### 覆盖范围与已知边界
 
 模块清单见 [`audit/module-manifest.json`](./audit/module-manifest.json)（**37 个模块**），
-按依赖与阅读收益排成 15 个批次，见 [`audit/READ-PLAN.md`](./audit/READ-PLAN.md)。
+按依赖与阅读收益排成 11 个批次，见 [`audit/READ-PLAN.md`](./audit/READ-PLAN.md)。
 
 ```
 计入范围的代码文件:   4176   （已排除 785 个预编译/示例/类型声明/mock）
-manifest 声明覆盖:   4000   (95.8%)
-已读并被文档引用:      811   (19.4%)
-模块缺口:            3137
-未被任何模块声明:      176   (4.2%)  → audit/unclaimed.json
+manifest 声明覆盖:   4009   (96.0%)
+已读并被文档引用:      937   (22.4%)
+模块缺口:            3072
+未被任何模块声明:      167   (4.0%)  → audit/unclaimed.json
 ```
 
-**恒等式校验**：`863 已读 + 3137 缺口 + 176 未声明 = 4176` ✅
+**恒等式校验**：`937 已读 + 3072 缺口 + 167 未声明 = 4176` ✅
 
 `status: done` 的严格含义是「**该目录下全部非测试文件都已读过且已成文**」，
 不是「这个主题写过」。`readFiles` 与 `fileCount` 的差值即为剩余缺口。
@@ -184,23 +185,23 @@ manifest 声明覆盖:   4000   (95.8%)
 ### 阅读计划（按优先级 + 前置依赖排序）
 
 完整计划见 [`audit/READ-PLAN.md`](./audit/READ-PLAN.md)，那里有 **37 个模块 × 缺口的逐项对账表**
-（合计 3189 = 实测值）。批次概览：
+（合计 3072 = 实测值）。批次概览：
 
 | 批次 | 主题 | 模块数 | 缺口 | 前置 |
 | --- | --- | --- | --- | --- |
-| **P0** | 基础设施补齐（渲染器基础设施 / 事件循环 / 错误处理 / 构建工具链 / 杂项） | 5 | 519 | 无 |
-| **P1** | 启动装配与运行时 | 2 | 83 | A5 → A3 |
-| **P2** | 渲染器核心 | 2 | 169 | E1 → A1 |
-| **P3** | 错误处理与内存管理（收尾） | — | — | — |
-| **P4** | TurboModule 与代码生成 | 2 | 244 | A3 → B1 |
-| **P5** | Fabric 组件层与文本布局 | 4 | 319 | A1+A2 |
-| **P6** | iOS 平台实现 | 2 | 172 | A2 → C1 |
-| **P7** | CxxPlatform / 图形样式 / Yoga | 4 | 298 | A1 |
-| **P8** | Android 平台层与 JNI | 3 | 627 | A2+A3 → C2 → C3 |
-| **P9** | DevTools 与其它子系统 | 10 | 591 | 各自独立 |
-| **P10** | 构建工具链、测试与 CLI（收尾） | 3 | 167 | D1 |
+| **P0** | 基础设施补齐（Renderer 基础设施 / 错误处理 / 事件循环与性能计时 / 杂项包） | 4 | 147 | 无 |
+| **P1** | 渲染器核心 + iOS 平台实现（含 iOS 剩余） | 3 | 300 | A1 → C1 |
+| **P2** | Fabric 组件层 + 通用视图组件 | 2 | 258 | A1 |
+| **P3** | Android 平台层 + JNI 胶水层 + Android 根级 API | 3 | 635 | A2 + A3 |
+| **P4** | JS 启动装配 + 运行时与 JS 引擎接口 + 内存管理 | 3 | 124 | A5 → A3 |
+| **P5** | TurboModule 与代码生成 + codegen e2e 夹具 | 2 | 244 | A3 |
+| **P6** | ReactCxxPlatform + Yoga + 图形与样式 + 文本布局与测量 | 4 | 340 | A1 |
+| **P7** | 动画系统 | 1 | 155 | A5 + A3 |
+| **P8** | DevTools / CDP / Inspector + Web API 兼容层 + 零散 JS 库 | 3 | 225 | A3 |
+| **P9** | 构建与发布工具链 + 测试基础设施 + CLI | 3 | 410 | D1 |
+| **P10** | 网络层 / 虚拟化列表 / 事件系统 / JS 私有层 / 引擎胶水 / 工具库 / Flags / 图片管线 / 宿主集成 | 9 | 234 | — |
 
-- 尚**未**成文的主题（0 篇文档）：**ReactCxxPlatform**、**测试基础设施（Fantom）**、
+- 尚**未**成文的主题（0 篇文档，共 10 个）：**ReactCxxPlatform**、**测试基础设施（Fantom）**、
   **codegen e2e 夹具**、**JS 私有层**、**JS 引擎胶水**、**文本布局与测量**、**网络层与 Blob**、
   **iOS 剩余**、**C++ 通用工具库**、**Feature Flags（C++ 侧，manifest 声明异常待核实）**。
 - 完整覆盖边界分析见 [`audit/README.md`](./audit/README.md#覆盖范围的真实边界)。

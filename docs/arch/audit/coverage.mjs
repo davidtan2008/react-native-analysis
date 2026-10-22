@@ -118,13 +118,17 @@ if (SHOW_GAPS) {
     console.log(`  [${m.tier}] ${m.id} ${m.name}  —— 缺 ${m.gap} / ${m.matched} (已读 ${(m.hitRatio * 100).toFixed(0)}%)`);
   }
   console.log('');
-  if (manifest.queue) {
-    console.log('── manifest 中预设的优先级 ──');
-    for (const q of manifest.queue.priority) {
-      const m = perModule.find(x => x.id === q.module);
-      if (!m) { console.log(`  ${q.rank}. ${q.module} (未找到)`); continue; }
-      console.log(`  ${q.rank}. [${m.tier}] ${m.id} ${m.name}  缺 ${m.gap} —— ${q.why}`);
-      console.log(`      产出: ${q.produces}`);
+  const batches = manifest.queue?.batches;
+  if (Array.isArray(batches)) {
+    console.log(`── manifest 中预设的批次（共 ${batches.length} 批；取舍理由见 ${manifest.planDoc ?? 'READ-PLAN.md'}）──`);
+    for (const b of batches) {
+      const mods = (b.modules ?? []).map(id => perModule.find(x => x.id === id)).filter(Boolean);
+      const liveGap = mods.reduce((s, m) => s + Math.max(0, m.gap), 0);
+      console.log(`  ${String(b.n).padStart(2)}. ${b.name}  —— 当前缺 ${liveGap}（manifest 记录 ${b.gap}）`);
+      for (const m of mods) {
+        if (m.gap <= 0) continue;
+        console.log(`        [${m.tier}] ${m.id} ${m.name}  缺 ${m.gap}`);
+      }
     }
   }
 }

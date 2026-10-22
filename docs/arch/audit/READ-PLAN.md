@@ -10,23 +10,23 @@
 
 ```
 计入范围的代码文件:              4176
-manifest 声明覆盖:              4000  (95.8%)
-已读并被文档引用:                918  (22.0%)
-模块缺口:                       3082
-未被任何模块声明:                176  (4.2%)  → audit/unclaimed.json
+manifest 声明覆盖:              4009  (96.0%)
+已读并被文档引用:                937  (22.4%)
+模块缺口:                       3072
+未被任何模块声明:                167  (4.0%)  → audit/unclaimed.json
 ```
 
-**恒等式校验**：`918 已读 + 3082 模块缺口 + 176 未声明 = 4176` ✅
+**恒等式校验**：`937 已读 + 3072 模块缺口 + 167 未声明 = 4176` ✅
 
 | 分层 | 含义 | 模块数 | 声明文件 | 已读文件 | 缺口 |
 | --- | --- | --- | --- | --- | --- |
 | **T1** | 框架核心，理解 RN 必须 | 8 | 680 | **250** | **430** |
-| **T2** | 重要子系统，性能与稳定性相关 | 13 | 1055 | **187** | **868** |
-| **T3** | 平台实现细节，按需查阅 | 10 | 1563 | **402** | **1161** |
-| **T4** | 工具链与周边，不影响运行时理解 | 6 | 702 | **79** | **623** |
-| **合计** | — | **37** | **4000** | **918** | **3082** |
+| **T2** | 重要子系统，性能与稳定性相关 | 13 | 1056 | **193** | **863** |
+| **T3** | 平台实现细节，按需查阅 | 10 | 1571 | **402** | **1169** |
+| **T4** | 工具链与周边，不影响运行时理解 | 6 | 702 | **92** | **610** |
+| **合计** | — | **37** | **4009** | **937** | **3072** |
 
-**产出**：**74 篇文档** / 40,248 行 / 2813 条引用（2549 带行号 + 264 纯路径）/ 1501 条断言 / **六道门禁全绿** / 4 个脚本生成的检索索引。
+**产出**：**75 篇文档** / 41,411 行 / 2916 条引用（2641 带行号 + 275 纯路径）/ 1533 条断言 / **六道门禁全绿** / 4 个脚本生成的检索索引。
 
 ---
 
@@ -98,7 +98,7 @@ manifest 声明覆盖:              4000  (95.8%)
 
 ---
 
-## 3. 批次安排（11 个批次 · 剩余 3082 文件）
+## 3. 批次安排（11 个批次 · 剩余 3072 文件）
 
 **优先级来源**：使用者给定的清单（① iOS → ② 启动装配 → ③ 运行时 → ④ 错误处理 → ⑤ 内存管理 →
 ⑥ CxxPlatform → ⑦ 渲染器核心 → ⑧ Fabric 组件层 → ⑨ TurboModule → ⑩ 其它 → ⑪ 构建工具链 →
@@ -116,8 +116,8 @@ manifest 声明覆盖:              4000  (95.8%)
 | **E1** | Renderer 基础设施（componentregistry / element / attributedstring / mapbuffer） | 35/36 | **1** | 08、64、70、74 |
 | **A4** | 错误处理（C++ 中枢 + 三端分发 + DevSupport） | 45/45 | **0** | 04、05、06、65、73 |
 | **A6** | 事件循环与性能计时 | 45/52 | **7** | 03、05、66、69、71、74 |
-| **Z1** | 杂项包与零星文件（工具链周边 / 模板 / 测试库） | 37/188 | **151** | 62、63、67、72 |
-| **合计** | 4 个模块 | | **159** | |
+| **Z1** | 杂项包与零星文件（工具链周边 / 模板 / 测试库） | 49/188 | **139** | 62、63、67、72、75 |
+| **合计** | 4 个模块 | | **147** | |
 
 - **依赖**：无
 - **为什么在这个位置**：E1/A4/A6 已接近清零；Z1 是杂项包，可整块处理。**先把已开的头收干净，不要留半开的模块**。
@@ -154,7 +154,7 @@ manifest 声明覆盖:              4000  (95.8%)
 | --- | --- | --- | --- | --- |
 | **C2** | Android 平台实现（bridge / uimanager / views / modules / fabric） | 120/466 | **346** | 02、04、05、15、16、17、40、41、42、44、45、46、47、48、59、61 |
 | **C3** | Android JNI 胶水层 | 23/180 | **157** | 18、50 |
-| **E7** | Android 根级 API（ReactActivity / Host / Package 等） | 11/135 | **124** | 15 |
+| **E7** | Android 根级 API（ReactActivity / Host / Package 等） | 11/143 | **132** | 15 |
 | **合计** | 3 个模块 | | **627** | |
 
 - **依赖**：A2 + A3
@@ -215,10 +215,10 @@ manifest 声明覆盖:              4000  (95.8%)
 
 | 模块 | 名称 | 已读/总数 | 缺口 | 已有文档 |
 | --- | --- | --- | --- | --- |
-| **B9** | DevTools / CDP / Inspector | 30/127 | **97** | 03 |
+| **B9** | DevTools / CDP / Inspector | 36/128 | **92** | 03、75 |
 | **B7** | Web API 兼容层（Observer / DOM Traversal / Performance） | 12/57 | **45** | 03、05 |
 | **E8** | 零散 JS 库（Alert/AppState/Modal/Share/Pressability 等） | 15/103 | **88** | 55、56 |
-| **合计** | 3 个模块 | | **230** | |
+| **合计** | 3 个模块 | | **225** | |
 
 - **依赖**：A3
 - **为什么在这个位置**：相互独立、彼此无依赖的模块，适合批量推进。**B9 已 1 篇**，E8 已 2 篇。
@@ -228,13 +228,13 @@ manifest 声明覆盖:              4000  (95.8%)
 
 | 模块 | 名称 | 已读/总数 | 缺口 | 已有文档 |
 | --- | --- | --- | --- | --- |
-| **D1** | 构建与发布工具链 | 41/294 | **253** | 01、49、68 |
+| **D1** | 构建与发布工具链 | 42/294 | **252** | 01、49、68、75 |
 | **D2** | 测试基础设施（Fantom / jest-preset） | 1/98 | **97** | — |
 | **D3** | CLI / 社区插件 / 其他包 | 0/61 | **61** | 01 |
-| **合计** | 3 个模块 | | **411** | |
+| **合计** | 3 个模块 | | **410** | |
 
 - **依赖**：D1
-- **为什么在这个位置**：**D1 缺口 253（工具链单点最大）**。**放在后面是有意的**：工具链决定「门禁是否有效」，等前面改过足够多源码后再评估门禁覆盖度更有意义。**D2 是零文档 —— 它就是门禁本身。**
+- **为什么在这个位置**：**D1 缺口 252（工具链单点最大）**。**放在后面是有意的**：工具链决定「门禁是否有效」，等前面改过足够多源码后再评估门禁覆盖度更有意义。**D2 是零文档 —— 它就是门禁本身。**
 - **产出方向**：D1 的 `scripts/` 与 `packages/gradle-plugin/`；D2 的 Fantom / jest-preset；D3 的 CLI
 
 ### 批次 P10 · 收尾：网络 / 虚拟化列表 / 事件系统 / JS 私有层 / 引擎胶水 / 工具库 / Flags / 图片 / 宿主集成
@@ -254,7 +254,7 @@ manifest 声明覆盖:              4000  (95.8%)
 
 - **依赖**：—
 - **为什么在这个位置**：**其中 6 个是零文档模块**（B6 / E4 / E9 / E2 / E3 / B5 之外的 E10 已在上批）。**E3 的 manifest 声明异常（`fileCount: 0`）要在这一批第一件事核实。**
-- **产出方向**：每个模块一篇；E3 先核实 manifest 声明；176 个未声明文件在这一批一并处理
+- **产出方向**：每个模块一篇；E3 先核实 manifest 声明；167 个未声明文件在这一批一并处理
 
 ---
 
@@ -262,46 +262,46 @@ manifest 声明覆盖:              4000  (95.8%)
 
 | 模块 | 名称 | 层级 | 已读/总数 | 缺口 | 批次 |
 | --- | --- | --- | --- | --- | --- |
-| **Z1** | 杂项包与零星文件（工具链周边 / 模板 / 测试库） | TT4 | 37/188 | **151** | P0 |
-| **A6** | 事件循环与性能计时 | TT1 | 45/52 | **7** | P0 |
-| **E1** | Renderer 基础设施（componentregistry / element / attributedstring / mapbuffer） | TT2 | 35/36 | **1** | P0 |
-| **A4** | 错误处理（C++ 中枢 + 三端分发 + DevSupport） | TT1 | 45/45 | **0** | P0 |
-| **C1** | iOS 平台实现（Base / Fabric / CoreModules / Views） | TT3 | 218/372 | **154** | P1 |
-| **A1** | 渲染器核心（ShadowNode / UIManager / Mounting / Scheduler） | TT1 | 39/167 | **128** | P1 |
-| **E10** | iOS 剩余（I18n / Profiler / CxxModule / CxxBridge） | TT3 | 0/18 | **18** | P1 |
-| **C6** | AppDelegate / 宿主集成 / Dev Menu / HMR | TT3 | 10/83 | **73** | P10 |
-| **B6** | 网络层与 Blob | TT2 | 0/44 | **44** | P10 |
-| **E4** | JS 私有层（src/private：devsupport / devmenu / components / testing） | TT2 | 0/38 | **38** | P10 |
-| **E9** | JS 引擎抽象与其他 C++ 胶水 | TT3 | 0/32 | **32** | P10 |
-| **B5** | 图片管线 | TT2 | 8/27 | **19** | P10 |
-| **B10** | 事件系统（合成事件 / 优先级 / 派发） | TT2 | 6/16 | **10** | P10 |
-| **B8** | 虚拟化列表 | TT2 | 12/21 | **9** | P10 |
-| **E2** | C++ 通用工具库（utils / telemetry / networking / cxxstableapi） | TT4 | 0/9 | **9** | P10 |
-| **E3** | Feature Flags（C++ 侧） | TT1 | 0/0 | **0** | P10 |
-| **A2** | Fabric 组件层（Text/View/Image/ScrollView 的 ShadowNode 与 props） | TT1 | 47/218 | **171** | P2 |
-| **C5** | 通用视图组件（ScrollView / Switch / TextInput / Modal 等） | TT3 | 5/92 | **87** | P2 |
-| **C2** | Android 平台实现（bridge / uimanager / views / modules / fabric） | TT3 | 120/466 | **346** | P3 |
-| **C3** | Android JNI 胶水层 | TT3 | 23/180 | **157** | P3 |
-| **E7** | Android 根级 API（ReactActivity / Host / Package 等） | TT3 | 11/135 | **124** | P3 |
-| **A3** | 运行时与 JS 引擎接口（ReactInstance / JSI / Timer） | TT1 | 22/64 | **42** | P4 |
-| **A5** | JS 启动装配与核心运行时环境 | TT1 | 32/73 | **41** | P4 |
-| **A7** | 内存管理（ShadowNode 引用计数 / 泄漏检测 / 压力响应） | TT1 | 20/61 | **41** | P4 |
-| **B1** | TurboModule 与代码生成 | TT2 | 41/233 | **192** | P5 |
-| **E11** | codegen 端到端测试夹具 | TT4 | 0/52 | **52** | P5 |
-| **E5** | Yoga 布局引擎（vendored） | TT2 | 4/118 | **114** | P6 |
-| **B4** | 图形与样式（graphics / css / StyleSheet） | TT2 | 8/110 | **102** | P6 |
-| **E6** | ReactCxxPlatform（C++ 平台层） | TT3 | 0/82 | **82** | P6 |
-| **B3** | 文本布局与测量 | TT2 | 2/44 | **42** | P6 |
-| **B2** | 动画系统（JS Animated / NativeAnimated / animationbackend） | TT2 | 29/184 | **155** | P7 |
-| **B9** | DevTools / CDP / Inspector | TT2 | 30/127 | **97** | P8 |
-| **E8** | 零散 JS 库（Alert/AppState/Modal/Share/Pressability 等） | TT3 | 15/103 | **88** | P8 |
-| **B7** | Web API 兼容层（Observer / DOM Traversal / Performance） | TT2 | 12/57 | **45** | P8 |
-| **D1** | 构建与发布工具链 | TT4 | 41/294 | **253** | P9 |
-| **D2** | 测试基础设施（Fantom / jest-preset） | TT4 | 1/98 | **97** | P9 |
-| **D3** | CLI / 社区插件 / 其他包 | TT4 | 0/61 | **61** | P9 |
-| **合计** | **37 个模块** | | **918**/4000** | **3082** | |
+| **Z1** | 杂项包与零星文件（工具链周边 / 模板 / 测试库） | T4 | 49/188 | **139** | P0 |
+| **A6** | 事件循环与性能计时 | T1 | 45/52 | **7** | P0 |
+| **E1** | Renderer 基础设施（componentregistry / element / attributedstring / mapbuffer） | T2 | 35/36 | **1** | P0 |
+| **A4** | 错误处理（C++ 中枢 + 三端分发 + DevSupport） | T1 | 45/45 | **0** | P0 |
+| **C1** | iOS 平台实现（Base / Fabric / CoreModules / Views） | T3 | 218/372 | **154** | P1 |
+| **A1** | 渲染器核心（ShadowNode / UIManager / Mounting / Scheduler） | T1 | 39/167 | **128** | P1 |
+| **E10** | iOS 剩余（I18n / Profiler / CxxModule / CxxBridge） | T3 | 0/18 | **18** | P1 |
+| **C6** | AppDelegate / 宿主集成 / Dev Menu / HMR | T3 | 10/83 | **73** | P10 |
+| **B6** | 网络层与 Blob | T2 | 0/44 | **44** | P10 |
+| **E4** | JS 私有层（src/private：devsupport / devmenu / components / testing） | T2 | 0/38 | **38** | P10 |
+| **E9** | JS 引擎抽象与其他 C++ 胶水 | T3 | 0/32 | **32** | P10 |
+| **B5** | 图片管线 | T2 | 8/27 | **19** | P10 |
+| **B10** | 事件系统（合成事件 / 优先级 / 派发） | T2 | 6/16 | **10** | P10 |
+| **B8** | 虚拟化列表 | T2 | 12/21 | **9** | P10 |
+| **E2** | C++ 通用工具库（utils / telemetry / networking / cxxstableapi） | T4 | 0/9 | **9** | P10 |
+| **E3** | Feature Flags（C++ 侧） | T1 | 0/0 | **0** | P10 |
+| **A2** | Fabric 组件层（Text/View/Image/ScrollView 的 ShadowNode 与 props） | T1 | 47/218 | **171** | P2 |
+| **C5** | 通用视图组件（ScrollView / Switch / TextInput / Modal 等） | T3 | 5/92 | **87** | P2 |
+| **C2** | Android 平台实现（bridge / uimanager / views / modules / fabric） | T3 | 120/466 | **346** | P3 |
+| **C3** | Android JNI 胶水层 | T3 | 23/180 | **157** | P3 |
+| **E7** | Android 根级 API（ReactActivity / Host / Package 等） | T3 | 11/143 | **132** | P3 |
+| **A3** | 运行时与 JS 引擎接口（ReactInstance / JSI / Timer） | T1 | 22/64 | **42** | P4 |
+| **A5** | JS 启动装配与核心运行时环境 | T1 | 32/73 | **41** | P4 |
+| **A7** | 内存管理（ShadowNode 引用计数 / 泄漏检测 / 压力响应） | T1 | 20/61 | **41** | P4 |
+| **B1** | TurboModule 与代码生成 | T2 | 41/233 | **192** | P5 |
+| **E11** | codegen 端到端测试夹具 | T4 | 0/52 | **52** | P5 |
+| **E5** | Yoga 布局引擎（vendored） | T2 | 4/118 | **114** | P6 |
+| **B4** | 图形与样式（graphics / css / StyleSheet） | T2 | 8/110 | **102** | P6 |
+| **E6** | ReactCxxPlatform（C++ 平台层） | T3 | 0/82 | **82** | P6 |
+| **B3** | 文本布局与测量 | T2 | 2/44 | **42** | P6 |
+| **B2** | 动画系统（JS Animated / NativeAnimated / animationbackend） | T2 | 29/184 | **155** | P7 |
+| **B9** | DevTools / CDP / Inspector | T2 | 36/128 | **92** | P8 |
+| **E8** | 零散 JS 库（Alert/AppState/Modal/Share/Pressability 等） | T3 | 15/103 | **88** | P8 |
+| **B7** | Web API 兼容层（Observer / DOM Traversal / Performance） | T2 | 12/57 | **45** | P8 |
+| **D1** | 构建与发布工具链 | T4 | 42/294 | **252** | P9 |
+| **D2** | 测试基础设施（Fantom / jest-preset） | T4 | 1/98 | **97** | P9 |
+| **D3** | CLI / 社区插件 / 其他包 | T4 | 0/61 | **61** | P9 |
+| **合计** | **37 个模块** | | **937**/**4009** | **3072** | |
 
-> **恒等式**：`918 已读 + 3082 模块缺口 + 176 未声明 = 4176` ✅（由 `normalize-manifest.mjs` 实测生成）
+> **恒等式**：`937 已读 + 3072 模块缺口 + 167 未声明 = 4176` ✅（由 `normalize-manifest.mjs` 实测生成）
 
 ## 5. 每批次的固定闭环（不可省略）
 
@@ -330,7 +330,7 @@ node docs/arch/audit/audit-citations.mjs   # 引用可达性，必须 0 问题
 node docs/arch/audit/verify-quotes.mjs     # 代码块语义，必须 0 存疑
 node docs/arch/audit/check-links.mjs       # 文档间链接，必须 0 断链
 node docs/arch/audit/check-headings.mjs    # 章节编号连续
-node docs/arch/audit/verify-claims.mjs     # 核心事实断言双向校验（当前 1276 条）
+node docs/arch/audit/verify-claims.mjs     # 核心事实断言双向校验（当前 1533 条）
 node docs/arch/audit/check-index.mjs       # 索引体系（front-matter / 索引漂移 / 死词条）
 node docs/arch/audit/coverage.mjs          # 覆盖度
 node docs/arch/audit/normalize-manifest.mjs # 重算已读/缺口
@@ -377,6 +377,6 @@ node docs/arch/audit/normalize-manifest.mjs # 重算已读/缺口
 | # | 事项 | 说明 |
 | --- | --- | --- |
 | 1 | **E3 的 manifest 声明异常** | `fileCount: 0`，疑似指向不存在的路径。P7 批次第一件事核实 |
-| 2 | **176 个未声明文件** | `audit/unclaimed.json` 里列出；需确认是「确实无需覆盖」还是「manifest 漏声明」 |
-| 3 | **5 个目录在 manifest 中已不存在** | `ReactAppDependencyProvider`、`react-native-gradle-plugin`、`react-native-assets`、`renderer/trace`、`src/private/console` —— 需清理 manifest |
+| 2 | **167 个未声明文件** | `audit/unclaimed.json` 里列出；需确认是「确实无需覆盖」还是「manifest 漏声明」 |
+| 3 | **11 条目录声明在 manifest 中已不存在** | **已清理**（2026-10-22）：`inspection` 改指 `devsupport/inspector`，其余 10 条删除；声明覆盖因此由 4000 升至 4009 |
 | 4 | **5 张架构图与文档的联动** | `archify` 产出的 5 张 HTML 图目前独立于索引体系，可考虑在主题地图中按主题域挂载 |

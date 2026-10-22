@@ -344,16 +344,18 @@
       "name": "DevTools / CDP / Inspector",
       "dirs": [
         "packages/react-native/ReactCommon/jsinspector-modern",
-        "packages/dev-middleware/src"
+        "packages/dev-middleware/src",
+        "packages/debugger-frontend"
       ],
-      "fileCount": 127,
-      "readFiles": 30,
+      "fileCount": 128,
+      "readFiles": 36,
       "status": "partial",
       "docs": [
-        "03"
+        "03",
+        "75"
       ],
-      "note": "已读 HostTarget/PerformanceTracer/HostAgent/CdpMetricsReporter/InspectorProxy。network/ 与 cdp/ 子目录未细读",
-      "gap": 97,
+      "note": "已读 HostTarget/PerformanceTracer/HostAgent/CdpMetricsReporter/InspectorProxy。network/ 与 cdp/ 子目录未细读；本轮读 dev-middleware 侧 5 个文件（DevToolLauncher 契约 / DefaultToolLauncher / getDevToolsFrontendUrl / openDebuggerMiddleware / createDevMiddleware）并把 packages/debugger-frontend 纳入本模块（此前其 index.js 无人声明；dist/ 已在 baseline.excluded 中），产出 75 文档",
+      "gap": 92,
       "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
     },
     {
@@ -515,15 +517,16 @@
         "packages/gradle-plugin"
       ],
       "fileCount": 294,
-      "readFiles": 41,
+      "readFiles": 42,
       "status": "partial",
       "docs": [
         "01",
         "49",
-        "68"
+        "68",
+        "75"
       ],
-      "note": "D1 已读 37。本轮读 scripts/releases 版本流水线 12 文件（set-version.js / set-rn-artifacts-version.js / utils/version-utils.js / templates 4 个 / 4 个生成的版本文件 + cxxreact 弃用转发头），另读 monorepoUtils.js（版本写入）与 2 个 CI workflow 作为证据",
-      "gap": 253,
+      "note": "D1 已读 37。本轮读 scripts/releases 版本流水线 12 文件（set-version.js / set-rn-artifacts-version.js / utils/version-utils.js / templates 4 个 / 4 个生成的版本文件 + cxxreact 弃用转发头），另读 monorepoUtils.js（版本写入）与 2 个 CI workflow 作为证据；本轮另读 scripts/debugger-shell/build-binary.js（BuildInfo 生成链路）作为 75 文档的证据文件",
+      "gap": 252,
       "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
     },
     {
@@ -586,31 +589,28 @@
         "private/helloworld",
         "packages/react-native/React/I18n",
         "packages/react-native/React/Profiler",
-        "packages/react-native/ReactAppDependencyProvider",
         "packages/react-native/flow",
         "packages/react-native-babel-preset",
         "packages/polyfills",
         "packages/eslint-config-react-native",
-        "packages/react-native-gradle-plugin",
         "packages/react-native-babel-transformer",
-        "packages/react-native-assets",
         "packages/react-native/ReactCommon/react/renderer/viewtransition",
-        "packages/react-native/ReactCommon/react/renderer/trace",
         "packages/react-native/ReactCommon/react/renderer/debug",
         "packages/react-native/ReactCommon/react/renderer/bridging",
         "packages/babel-plugin-codegen"
       ],
       "fileCount": 188,
-      "readFiles": 37,
+      "readFiles": 49,
       "status": "partial",
       "docs": [
         "62",
         "63",
         "67",
-        "72"
+        "72",
+        "75"
       ],
-      "note": "Z1 已读 37。本轮读 ReactCommon/react/renderer/debug 7 文件 + bridging 2 + viewtransition 2",
-      "gap": 151,
+      "note": "目录声明已清理：ReactAppDependencyProvider / react-native-gradle-plugin / react-native-assets / renderer/trace 在本 commit 已不存在。本轮读 packages/debugger-shell/ 全部 12 个非测试文件（入口分叉 / node 变体 / electron 变体 / 窗口与菜单 / 配置持久化 / preload），产出 75 文档",
+      "gap": 139,
       "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
     },
     {
@@ -677,10 +677,9 @@
         "packages/react-native/src/private/renderer",
         "packages/react-native/src/private/featureflags",
         "packages/react-native/src/private/timers",
-        "packages/react-native/src/private/types",
-        "packages/react-native/src/private/console"
+        "packages/react-native/src/private/types"
       ],
-      "note": "devmenu / Fantom 测试框架 / JS 侧渲染桥接",
+      "note": "目录声明已清理：src/private/console 在本 commit 已不存在",
       "fileCount": 38,
       "readFiles": 0,
       "status": "todo",
@@ -757,24 +756,20 @@
         "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/interfaces",
         "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/module",
         "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/reactperflogger",
-        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/performance",
-        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/inspection",
-        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/root",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/devsupport/inspector",
         "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/shell",
-        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/trace",
         "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/devsupport/interfaces",
         "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/activityresult",
-        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/appearance",
         "packages/react-native/ReactAndroid/cmake-utils"
       ],
-      "note": "已读 11 并成文（15 文档：ReactHost/ReactNativeHost 双轨、DefaultReactHost 单例、ReactInstanceManager 创建线程、ReactMarker 埋点体系、MemoryPressureRouter 路由）。本轮读：ReactHost.kt/ReactInstanceManager.java(启动段)/defaults/{DefaultReactHost,DefaultReactNativeHost}.kt/bridge/{ReactMarker,ReactMarkerConstants}.kt/MemoryPressureRouter.kt/runtime/ReactHostImpl.kt(内存压力段)/scripts/cocoapods/new_architecture.rb(新架构开关)。未读：common(27)/internal(24, 含 featureflags 13)/devsupport/interfaces(12)/packagerconnection(7)/jstasks(6)/ReactRootView(1069)/HeadlessJsTaskService/ReactActivity/ReactInstanceManagerBuilder",
-      "fileCount": 135,
+      "note": "目录声明已清理并改指：performance/root/trace/appearance 已删除或已迁至他模块；inspection 改指 devsupport/inspector",
+      "fileCount": 143,
       "readFiles": 11,
       "status": "partial",
       "docs": [
         "15"
       ],
-      "gap": 124,
+      "gap": 132,
       "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
     },
     {
@@ -789,7 +784,6 @@
         "packages/react-native/Libraries/PermissionsAndroid",
         "packages/react-native/Libraries/FBLazyVector",
         "packages/react-native/Libraries/TurboModule",
-        "packages/react-native/Libraries/YellowBox",
         "packages/react-native/Libraries/Pressability",
         "packages/react-native/Libraries/EventEmitter",
         "packages/react-native/Libraries/Interaction",
@@ -813,7 +807,7 @@
         "packages/react-native/Libraries/LayoutAnimation",
         "packages/react-native/Libraries/Performance"
       ],
-      "note": "E8 已读 15。本轮读零散 JS 库 8 文件（TextInputState.js 的 :34-70/:181-198、Modal.js:194-223、AppState.js:60-95、Libraries 全域 __DEV__ 分布实测、AppStateModule.kt:70-95）",
+      "note": "目录声明已清理：Libraries/YellowBox 已由 LogBox 取代（LogBox 归 A4 错误处理）",
       "fileCount": 103,
       "readFiles": 15,
       "status": "todo",
@@ -879,131 +873,81 @@
     }
   ],
   "queue": {
-    "$comment": "批次安排见 docs/arch/audit/READ-PLAN.md；此处为机器可读摘要",
+    "$comment": "批次顺序以 HANDOVER.md §5.3 / READ-PLAN.md §3 的 P0–P10 为准；gap 由 normalize-manifest.mjs 实测重算",
     "batches": [
       {
-        "n": 1,
-        "name": "渲染器核心",
+        "n": 0,
+        "name": "P0 · 基础设施补齐（当前批次收尾）",
         "modules": [
           "E1",
+          "A4",
+          "A6",
+          "Z1"
+        ],
+        "gap": 147
+      },
+      {
+        "n": 1,
+        "name": "P1 · iOS 平台实现（含前置 A1 渲染器核心）",
+        "modules": [
           "A1",
-          "A2"
+          "C1",
+          "E10"
         ],
         "gap": 300
       },
       {
         "n": 2,
-        "name": "运行时与启动",
+        "name": "P2 · Fabric 组件层",
         "modules": [
-          "A3",
+          "A2",
+          "C5"
+        ],
+        "gap": 258
+      },
+      {
+        "n": 3,
+        "name": "P3 · Android 平台层 + JNI 胶水层",
+        "modules": [
+          "C2",
+          "C3",
+          "E7"
+        ],
+        "gap": 635
+      },
+      {
+        "n": 4,
+        "name": "P4 · 启动装配 + 运行时 + 内存管理",
+        "modules": [
           "A5",
+          "A3",
           "A7"
         ],
         "gap": 124
       },
       {
-        "n": 3,
-        "name": "TurboModule",
-        "modules": [
-          "B1"
-        ],
-        "gap": 192
-      },
-      {
-        "n": 4,
-        "name": "Android 平台层（4a/4b/4c/4d 完成）",
-        "modules": [
-          "E7",
-          "C2",
-          "C3"
-        ],
-        "gap": 627,
-        "subBatches": [
-          {
-            "n": "4a",
-            "name": "Android 根级 API",
-            "modules": [
-              "E7"
-            ],
-            "done": true,
-            "docs": [
-              "15"
-            ]
-          },
-          {
-            "n": "4b",
-            "name": "Android uimanager",
-            "modules": [
-              "C2"
-            ],
-            "todo": true,
-            "done": true,
-            "docs": [
-              "16"
-            ]
-          },
-          {
-            "n": "4c",
-            "name": "Android views + 其余",
-            "modules": [
-              "C2"
-            ],
-            "todo": true,
-            "done": true,
-            "docs": [
-              "17"
-            ]
-          },
-          {
-            "n": "4d",
-            "name": "Android JNI 胶水层",
-            "modules": [
-              "C3"
-            ],
-            "todo": true,
-            "done": true,
-            "docs": [
-              "18"
-            ]
-          }
-        ]
-      },
-      {
         "n": 5,
-        "name": "iOS 平台层（19 文档完成）",
+        "name": "P5 · TurboModule 与代码生成",
         "modules": [
-          "C1",
-          "E10"
+          "B1",
+          "E11"
         ],
-        "gap": 172,
-        "docs": [
-          "19",
-          "20",
-          "21",
-          "22",
-          "23",
-          "24",
-          "25",
-          "26",
-          "27",
-          "28",
-          "29",
-          "30"
-        ]
+        "gap": 244
       },
       {
         "n": 6,
-        "name": "样式与图形",
+        "name": "P6 · CxxPlatform + Yoga + 图形样式 + 文本布局",
         "modules": [
+          "E6",
+          "E5",
           "B4",
-          "B10",
-          "B7"
+          "B3"
         ],
-        "gap": 157
+        "gap": 340
       },
       {
         "n": 7,
-        "name": "动画",
+        "name": "P7 · 动画系统",
         "modules": [
           "B2"
         ],
@@ -1011,83 +955,42 @@
       },
       {
         "n": 8,
-        "name": "文本与图片",
+        "name": "P8 · DevTools 与调试 + 其它子系统",
         "modules": [
-          "B3",
-          "B5",
-          "B6"
+          "B9",
+          "B7",
+          "E8"
         ],
-        "gap": 105
+        "gap": 225
       },
       {
         "n": 9,
-        "name": "DevTools",
-        "modules": [
-          "B9"
-        ],
-        "gap": 97
-      },
-      {
-        "n": 10,
-        "name": "计时/Flags/工具库",
-        "modules": [
-          "A6",
-          "E3",
-          "E2"
-        ],
-        "gap": 16
-      },
-      {
-        "n": 11,
-        "name": "Yoga 布局",
-        "modules": [
-          "E5"
-        ],
-        "gap": 114
-      },
-      {
-        "n": 12,
-        "name": "零散组件与库",
-        "modules": [
-          "C5",
-          "C6",
-          "E8",
-          "E9"
-        ],
-        "gap": 280
-      },
-      {
-        "n": 13,
-        "name": "剩余平台层",
-        "modules": [
-          "E6",
-          "E4"
-        ],
-        "gap": 120
-      },
-      {
-        "n": 14,
-        "name": "工具链与测试",
+        "name": "P9 · 构建与发布工具链 + 测试基础设施 + CLI",
         "modules": [
           "D1",
           "D2",
-          "D3",
-          "Z1",
-          "E11"
+          "D3"
         ],
-        "gap": 614
+        "gap": 410
       },
       {
-        "n": 15,
-        "name": "收尾",
+        "n": 10,
+        "name": "P10 · 收尾（网络/虚拟化/事件/私有层/胶水等）",
         "modules": [
-          "A4",
-          "B8"
+          "B6",
+          "B8",
+          "B10",
+          "E4",
+          "E9",
+          "E2",
+          "E3",
+          "B5",
+          "C6"
         ],
-        "gap": 9
+        "gap": 234
       }
     ],
-    "totalGap": 3082
+    "totalGap": 3072
   },
   "docsIndex": {
     "07": {

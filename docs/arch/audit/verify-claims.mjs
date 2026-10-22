@@ -11888,6 +11888,223 @@ addDocClaim('D217', '文档给出了哈希契约违反在 AttributedString 一�
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// 75 文档 · DevTools 外壳（packages/debugger-shell）—— DSH-1 … DSH-19
+// ────────────────────────────────────────────────────────────────────────
+{
+  const DS = 'packages/debugger-shell/src';
+  const DM = 'packages/dev-middleware/src';
+
+  // ── DSH-1：exports 的条件顺序（入口分叉的两套判据）──
+  const dsPkg = JSON.parse(read('packages/debugger-shell/package.json') ?? '{}');
+  const expKeys = Object.keys(dsPkg.exports?.['.'] ?? {});
+  add('C562', 'DSH-1 核心：debugger-shell 的 exports["."] 把 node 写在 electron 之前 —— 条件导出按声明顺序匹配，故按包名解析命中 node 变体',
+    '键顺序 [node, electron]',
+    '[' + expKeys.join(', ') + ']',
+    expKeys.length === 2 && expKeys[0] === 'node' && expKeys[1] === 'electron');
+
+  const electronCond = [];
+  for (const d of fs.readdirSync(path.join(REPO, 'packages'))) {
+    const pj = path.join(REPO, 'packages', d, 'package.json');
+    if (!fs.existsSync(pj)) continue;
+    try {
+      const j = JSON.parse(fs.readFileSync(pj, 'utf8'));
+      if (JSON.stringify(j.exports ?? '').includes('electron')) electronCond.push(d);
+    } catch {}
+  }
+  add('C563', 'DSH-1 补充：全 RN 仓库只有 debugger-shell 一个包在 package.json 的 exports 里使用 electron 条件',
+    '恰好 1 个包',
+    electronCond.length + ' 个: ' + electronCond.join(', '),
+    electronCond.length === 1 && electronCond[0] === 'debugger-shell');
+
+  const pubKeys = Object.keys(dsPkg.publishConfig?.exports?.['.'] ?? {});
+  add('C564', 'DSH-1 补充：publishConfig 里的 exports["."] 同样是 node 在前 —— prepack.js 逐字段覆盖后，发布包沿用同一顺序',
+    '键顺序 [node, electron]',
+    '[' + pubKeys.join(', ') + ']',
+    pubKeys.length === 2 && pubKeys[0] === 'node' && pubKeys[1] === 'electron');
+
+  // ── DSH-2 / DSH-3 / DSH-4：拉起子进程的三处形态 ──
+  const nodeFlow = read(DS + '/node/index.flow.js') ?? '';
+  const spawnAt = nodeFlow.indexOf("child.on('spawn'");
+  const closeAt = nodeFlow.indexOf("child.on('close'");
+  add('C565', 'DSH-2 核心：detached 模式下 child.on("spawn") 里就 resolve()，而 reject() 写在后面的 close 回调里 —— Promise 已落定，reject 失效',
+    'spawn 的 resolve 早于 close 的 reject',
+    'spawn@' + spawnAt + ' / close@' + closeAt,
+    spawnAt > 0 && closeAt > spawnAt &&
+      nodeFlow.includes("child.on('spawn', () => {") &&
+      nodeFlow.includes('resolve();') &&
+      nodeFlow.includes('reject('));
+
+  add('C566', 'DSH-3 核心：syncThenExit 分支里 process.exit(1) 被 `code == null && !silent` 守卫 —— silent 为真时落到 process.exit(code)，而此时 code 是 null（实测退出码 0）',
+    '守卫条件与两条 exit 并存',
+    (nodeFlow.includes('if (code == null && !silent) {') ? '有守卫' : '无守卫') +
+      ' / exit(1):' + nodeFlow.includes('process.exit(1);') +
+      ' / exit(code):' + nodeFlow.includes('process.exit(code);'),
+    nodeFlow.includes('if (code == null && !silent) {') &&
+      nodeFlow.includes('process.exit(1);') &&
+      nodeFlow.includes('process.exit(code);'));
+
+  add('C567', 'DSH-4：拉起子进程时 ELECTRON_RUN_AS_NODE 被显式从 env 中剔除（防父进程泄漏）',
+    '存在 ELECTRON_RUN_AS_NODE: _,',
+    nodeFlow.includes('ELECTRON_RUN_AS_NODE: _,') ? '存在' : '缺失',
+    nodeFlow.includes('ELECTRON_RUN_AS_NODE: _,'));
+
+  // ── DSH-5 / DSH-6 / DSH-7：错误分类 ──
+  const launchUtils = read(DS + '/node/private/LaunchUtils.js') ?? '';
+  const phrases = ['dotslash error', 'no providers succeeded', 'failed to verify artifact', 'platform not supported'];
+  const missing = phrases.filter(p => !launchUtils.includes(p));
+  add('C568', 'DSH-5 核心：错误分类完全依赖 fb-dotslash 的 stderr 英文子串（4 个固定短语），不参考退出码也不解析结构化输出',
+    '4 个短语全部出现',
+    missing.length ? '缺 ' + missing.join(', ') : '4 个齐全',
+    missing.length === 0);
+
+  const codeZero = launchUtils.split('code === 0').length - 1;
+  add('C569', 'DSH-5 补充：只有 success 分支使用退出码判定（code === 0 恰好 1 处），其余分类分支不参考退出码',
+    'code === 0 恰好 1 处',
+    codeZero + ' 处',
+    codeZero === 1);
+
+  const catchAt = nodeFlow.indexOf('} catch (e) {');
+  const catchBlock = catchAt > 0 ? nodeFlow.slice(catchAt, catchAt + 240) : '';
+  add('C570', 'DSH-6：unstable_prepareDebuggerShell 的 catch 分支返回 unexpected_error 但不带 humanReadableMessage —— 同一个 code 因此有两种文案',
+    'catch 块含 verboseInfo: e.message 且不含 humanReadableMessage',
+    'unexpected_error:' + catchBlock.includes("code: 'unexpected_error'") +
+      ' / verboseInfo:' + catchBlock.includes('verboseInfo: e.message') +
+      ' / humanReadableMessage:' + catchBlock.includes('humanReadableMessage'),
+    catchBlock.includes("code: 'unexpected_error'") &&
+      catchBlock.includes('verboseInfo: e.message') &&
+      !catchBlock.includes('humanReadableMessage'));
+
+  const shellNotImpl = grepCount(/not_implemented/, {roots: ['packages/debugger-shell'], exts: ['.js']});
+  add('C571', 'DSH-7：not_implemented 在 debugger-shell 包内只有类型声明处一处 —— 本包无任何产出路径（它由调用方产出）',
+    '恰好 1 处',
+    shellNotImpl.count + ' 处',
+    shellNotImpl.count === 1);
+
+  // ── DSH-8：错误分类在消费端有真实分级 ──
+  const cdm = read(DM + '/createDevMiddleware.js') ?? '';
+  add('C572', 'DSH-8：错误分类在消费端有真实分级 —— unexpected_error 走 logger.error，其余三种走 logger.warn',
+    'error / warn 两级并存且 4 个 code 齐全',
+    'error:' + cdm.includes('logger?.error(message)') +
+      ' / warn:' + cdm.includes('logger?.warn(') +
+      ' / codes:' + ["'unexpected_error'", "'possible_corruption'", "'platform_not_supported'", "'likely_offline'"]
+        .filter(c => cdm.includes(c)).length + '/4',
+    cdm.includes("case 'unexpected_error':") &&
+      cdm.includes('logger?.error(message)') &&
+      cdm.includes('logger?.warn(') &&
+      cdm.includes("case 'possible_corruption':") &&
+      cdm.includes("case 'platform_not_supported':") &&
+      cdm.includes("case 'likely_offline':"));
+
+  // ── DSH-9 / DSH-10 / DSH-11：与 DevToolLauncher 契约的背离 ──
+  const miep = read(DS + '/electron/MainInstanceEntryPoint.js') ?? '';
+  const siAt = miep.indexOf("'second-instance'");
+  const siBlock = siAt > 0 ? miep.slice(siAt, siAt + 240) : '';
+  add('C573', 'DSH-10：second-instance 处理器用 additionalData.argv（第一实例在申请单例锁时存的），而第二实例自己的 electronArgv 只出现在参数列表里、从不被使用',
+    '回调体用 additionalData.argv，且 electronArgv 仅出现 1 次',
+    'additionalData.argv:' + siBlock.includes('additionalData.argv') +
+      ' / electronArgv 出现 ' + (siBlock.split('electronArgv').length - 1) + ' 次',
+    siBlock.includes('handleLaunchArgs(additionalData.argv)') &&
+      (siBlock.split('electronArgv').length - 1) === 1);
+
+  add('C574', 'DSH-11：复用窗口的路径上同样无条件调用 loadURL（重载会拆掉 CDP 连接），且源码 TODO 明确自认应当避免这次重载',
+    'TODO 与无条件 loadURL 并存',
+    'TODO:' + miep.includes('// TODO: If the window contains a live, working frontend instance') +
+      ' / loadURL:' + miep.includes('frontendWindow.loadURL(frontendUrl);'),
+    miep.includes('// TODO: If the window contains a live, working frontend instance') &&
+      miep.includes('frontendWindow.loadURL(frontendUrl);'));
+
+  // ── DSH-12 / DSH-13：参数解析 ──
+  const elFlow = read(DS + '/electron/index.flow.js') ?? '';
+  const elParseAt = elFlow.indexOf('util.parseArgs');
+  const elParseBlock = elParseAt > 0 ? elFlow.slice(elParseAt, elParseAt + 320) : '';
+  const miParseAt = miep.indexOf('util.parseArgs');
+  const miParseBlock = miParseAt > 0 ? miep.slice(miParseAt, miParseAt + 320) : '';
+  add('C575', 'DSH-13：electron/index.flow.js 的 parseArgs 显式 strict:false，而 MainInstanceEntryPoint.js 的 parseArgs 用默认 strict —— 未知选项会抛 ERR_PARSE_ARGS_UNKNOWN_OPTION、位置参数会抛 ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL',
+    '一处 strict:false，一处无 strict',
+    'index.flow.js strict:false=' + elParseBlock.includes('strict: false') +
+      ' / MainInstance 无 strict=' + !miParseBlock.includes('strict'),
+    elParseBlock.includes('strict: false') && !miParseBlock.includes('strict'));
+
+  // ── DSH-14 / DSH-15 / DSH-16：SettingsStore ──
+  const store = read(DS + '/electron/SettingsStore.js') ?? '';
+  add('C576', 'DSH-14：SettingsStore.get 用 `store[key] !== undefined` 判定 —— 键存在但值为 null 时返回 null 而非默认值，调用方直接下标即抛 TypeError',
+    '判定式为 !== undefined',
+    store.includes('return store[key] !== undefined ? store[key] : defaultValue;') ? '匹配' : '不匹配',
+    store.includes('return store[key] !== undefined ? store[key] : defaultValue;'));
+
+  add('C577', 'DSH-16：本包唯一实例化点不传 defaults（#defaultValues 恒为 {}），且 set() 保留了被类型 key: string 排除的 typeof key === "object" 死分支',
+    '实例化不带 defaults，且死分支存在',
+    '无 defaults:' + (!/new SettingsStore\(\s*\{/.test(miep) && miep.includes('const appSettings = new SettingsStore();')) +
+      ' / 死分支:' + store.includes("typeof key === 'object'") +
+      ' / 默认值表:' + store.includes('#defaultValues: Object = {};'),
+    !/new SettingsStore\(\s*\{/.test(miep) &&
+      miep.includes('const appSettings = new SettingsStore();') &&
+      store.includes("typeof key === 'object'") &&
+      store.includes('#defaultValues: Object = {};'));
+
+  // ── DSH-17：菜单命令 ID 在前端产物中均存在 ──
+  const FRONT = 'packages/debugger-frontend/dist/third-party/front_end';
+  const cmdIds = ['inspector-main.reload', 'quick-open.show', 'quick-open.show-command-menu', 'settings.shortcuts'];
+  const cmdHits = cmdIds.map(id => [
+    id,
+    grepCount('"' + id.replace(/\./g, '\\.') + '"', {roots: [FRONT], exts: ['.js']}).count,
+  ]);
+  const absent = cmdHits.filter(([, n]) => n === 0).map(([id]) => id);
+  add('C578', 'DSH-17：AppMenu 注入的 4 个前端命令 ID 在 debugger-frontend 的产物中全部存在（按含匹配的行数计）',
+    '4 个 ID 均 ≥1 行',
+    absent.length ? '缺失: ' + absent.join(', ') : cmdHits.map(([i, n]) => i + '=' + n).join(', '),
+    absent.length === 0);
+
+  // ── DSH-19：OSS 构建下 revision 为 null ──
+  const buildBin = read('scripts/debugger-shell/build-binary.js') ?? '';
+  const hasMeta = exists('scripts/debugger-shell/metainternal');
+  add('C579', 'DSH-19：additionalConfig.appVersionHash 默认 null，且仅由 Meta 内部的 metainternal/build-binary-setup 覆盖 —— OSS 仓库无该目录，故 revision 为 null、版本串成为 0.87.0-main-null',
+    '默认 null 且 OSS 无 metainternal',
+    '默认 null:' + buildBin.includes('appVersionHash: null') +
+      ' / OSS 有 metainternal:' + hasMeta +
+      ' / 拼接点:' + elFlow.includes("app.setVersion(pkg.version + '-' + buildInfo.revision);"),
+    buildBin.includes('appVersionHash: null') && !hasMeta &&
+      elFlow.includes("app.setVersion(pkg.version + '-' + buildInfo.revision);"));
+
+  // ── DSH-20：启动失败日志的兜底分支不可达 ──
+  const odm = read(DM + '/middleware/openDebuggerMiddleware.js') ?? '';
+  const hasNullishFallback =
+    odm.includes("'Error launching DevTools: ' + e.message ?? 'Unknown error'");
+  add('C580', 'DSH-20：启动失败日志的 ?? 兜底不可达 —— + 的优先级高于 ??，左边恒为字符串，故 "Unknown error" 永远不会生效（实测 e.message 为 undefined 时输出 "…: undefined"）',
+    "表达式含 'Error launching DevTools: ' + e.message ?? 'Unknown error'",
+    hasNullishFallback ? '匹配（未加括号，兜底不可达）' : '不匹配',
+    hasNullishFallback);
+
+  // ── 文档侧 ──
+  addDocClaim('D218', '75 文档写明条件导出按声明顺序匹配、node 写在 electron 之前会让 node 变体胜出',
+    /条件导出.*声明顺序|exports.*按.*声明顺序/s, {min: 1});
+  addDocClaim('D219', '75 文档写明 detached 模式下 resolve 早于 reject，故 reject 失效、非零退出码无法上报',
+    /reject\(\).*\*\*失效\*\*/, {min: 1});
+  addDocClaim('D220', '75 文档写明 process.exit(null) 的退出码是 0，silent 模式下信号终止被报告为成功',
+    /process\.exit\(null\).*退出码.*0/, {min: 1});
+  addDocClaim('D221', '75 文档写明实现与 DevToolLauncher 契约的三条 SHOULD 全部背离',
+    /三条\s*SHOULD.*背离/, {min: 1});
+  addDocClaim('D222', '75 文档写明契约要求「即使两个会话的启动 URL 不相同」也应视为同一会话',
+    /即使两个会话的启动 URL 不相同/, {min: 1});
+  addDocClaim('D223', '75 文档写明源码 TODO 自认复用窗口时应当避免整页重载',
+    /源码 TODO \*\*自认\*\*/, {min: 1});
+  addDocClaim('D224', '75 文档写明 SettingsStore.get 的默认值语义是「值为 undefined 才回退」',
+    /值为\s*`undefined`\s*才回退/, {min: 1});
+  addDocClaim('D225', '75 文档写明错误分类依赖 stderr 的英文子串，上游改文案会静默降级',
+    /stderr.*英文子串/, {min: 1});
+  addDocClaim('D226', '75 文档写明 OSS 构建下版本串为 0.87.0-main-null',
+    /0\.87\.0-main-null/, {min: 1});
+  addDocClaim('D227', '75 文档写明 not_implemented 在本包内无任何产出路径',
+    /`not_implemented`.*无任何产出路径/, {min: 1});
+  addDocClaim('D228', '75 文档写明 4 个菜单命令 ID 在前端产物中均确认存在',
+    /4 个命令 ID 在前端产物中均确认存在/, {min: 1});
+  addDocClaim('D229', '「静默失败」这一形态在构建链路与进程启动两处各自出现',
+    /静默失败/, {min: 2});
+  addDocClaim('D230', '75 文档写明启动失败日志的 ?? 兜底因运算符优先级而不可达',
+    /兜底分支不可达/, {min: 1});
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // 报告
 // ────────────────────────────────────────────────────────────────────────
 const fail = checks.filter(c => !c.ok);
