@@ -7,6 +7,7 @@ platforms: [cross]
 architecture: [fabric]
 layer: T1
 symbols: ["primitives.h", "ViewEvents", "BorderStyle"]
+sourceRoot: react-native
 claims: [ZZ-1, ZZ-2, ZZ-3, ZZ-4, ZZ-5, ZZ-6, ZZ-7]
 ---
 # 60 · View 组件的原语层：35 个事件位里的三处空洞、两个成员完全相同的枚举、以及 14 个模板别名
@@ -16,7 +17,7 @@ claims: [ZZ-1, ZZ-2, ZZ-3, ZZ-4, ZZ-5, ZZ-6, ZZ-7]
 > `components/view/BaseViewProps.cpp`（616）、
 > `renderer/animationbackend/AnimatedPropSerializer.cpp`
 >
-> **基线**：react-native @ `9b131e42` · 跨平台 C++ · **Fabric 新架构**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · 跨平台 C++ · **Fabric 新架构**
 >
 > **前置**：[07 文档](./07-Fabric组件层与Props体系.md) 记录 Fabric 组件层与 Props；
 > [10 文档](./10-Fabric组件层与视图扁平化.md) 记录视图扁平化；

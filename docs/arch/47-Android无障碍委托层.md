@@ -7,6 +7,7 @@ platforms: [android]
 architecture: [cross]
 layer: T3
 symbols: ["AccessibilityDelegate", "ReactAccessibilityDelegate"]
+sourceRoot: react-native
 claims: [MM-1, MM-2, MM-3, MM-4, MM-5, MM-6, MM-7, MM-8]
 ---
 # 47 · Android 无障碍委托层：1021 行的基类、5 个空实现与一个 O(n) 递归描述器
@@ -16,7 +17,7 @@ claims: [MM-1, MM-2, MM-3, MM-4, MM-5, MM-6, MM-7, MM-8]
 > `views/text/ReactTextViewAccessibilityDelegate.kt`（366）、
 > `views/text/ReactTextView.java:657-669`
 >
-> **基线**：react-native @ `9b131e42` · Android 侧 · **新旧架构共用**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧 · **新旧架构共用**
 >
 > **前置**：[45 文档](./45-Android-ViewManager属性缓存与回收契约.md) §2.2 记录
 > `BaseViewManager.prepareToRecycleView` 清空 **8 个无障碍 tag**（无障碍泄漏防护）；

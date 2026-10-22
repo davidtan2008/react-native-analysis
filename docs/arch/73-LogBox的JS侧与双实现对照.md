@@ -7,6 +7,7 @@ platforms: [cross]
 architecture: [cross]
 layer: T2
 symbols: ["parseLogBoxLog", "LogBoxData", "LogBoxSymbolication", "LogBoxLog"]
+sourceRoot: react-native
 claims: [MMM-1, MMM-2, MMM-3, MMM-4, MMM-5, MMM-6, MMM-7, MMM-8, MMM-9, MMM-10]
 ---
 # 73 · LogBox 的 JS 侧：与 C++ 解析器的双实现对照、一个与 log 生命周期脱钩的符号化缓存，以及一次自我纠错
@@ -14,7 +15,7 @@ claims: [MMM-1, MMM-2, MMM-3, MMM-4, MMM-5, MMM-6, MMM-7, MMM-8, MMM-9, MMM-10]
 > **模块**：A4 · `packages/react-native/Libraries/LogBox/Data/`（`parseLogBoxLog.js` / `LogBoxData.js` /
 > `LogBoxSymbolication.js` / `LogBoxLog.js`）
 >
-> **基线**：react-native @ `9b131e42` · JS（`Libraries/`）· **dev-only**（LogBox 只在开发模式显示）
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · JS（`Libraries/`）· **dev-only**（LogBox 只在开发模式显示）
 >
 > **前置**：[04 文档](./04-崩溃日志捕获收集处理上传.md) 记录崩溃采集与上传全链路；
 > [22 文档](./22-iOS崩溃UI层RedBox与LogBox.md) 记录 iOS RedBox/LogBox 双层门控；
@@ -330,7 +331,7 @@ grep -rn "deleteStack" --include="*.js" packages/react-native/Libraries/
 ```
 
 ```bash
-# 在仓库根重跑（完全相同的检索根）
+# 在分析仓库根（`react-native-analysis/`）重跑（完全相同的检索根）
 grep -rn "deleteStack" --include="*.js" packages/react-native/Libraries/
 → 4 处命中
 ```
@@ -346,7 +347,7 @@ grep -rn "deleteStack" --include="*.js" packages/react-native/Libraries/
 
 ### 5.4 固化的纪律
 
-> **检索命令必须在仓库根执行，或使用与当前 cwd 匹配的路径。**
+> **检索命令必须在分析仓库根（`react-native-analysis/`）执行，或使用与当前 cwd 匹配的路径。**
 > **「零命中」在下结论前必须用「另一条等价的检索方式」复核** —— 例如
 > ① 换一条 grep 模式；② 用 Python 直接遍历；③ 换 cwd 重跑。
 
@@ -371,7 +372,7 @@ grep -rn "deleteStack" --include="*.js" packages/react-native/Libraries/
 | **MMM-7** | **`retrySymbolicate` 会先 `deleteStack` 再重试** → **失败不会被永久缓存** ✓ | `packages/react-native/Libraries/LogBox/Data/LogBoxLog.js:93-106` | ✓ **设计正确**（**本轮一度被我错误地判为缺陷**） |
 | **MMM-8** | **`sanitize` 对 `symbolicateStackTrace` 的返回值做了完整校验**（非数组则抛、`collapse` 非布尔则抛） | `packages/react-native/Libraries/LogBox/Data/LogBoxSymbolication.js:25-48` | ✓ **防御充足** —— 与 65 文档 EEE-2 的 C++ 侧形成正反对照 |
 | **MMM-9** | **`addLog` 订阅了 `DebuggerSessionObserver` 与 `TracingStateObserver`**，在会话/追踪开始时自动清理 | `packages/react-native/Libraries/LogBox/Data/LogBoxData.js:196-219` | ✓ **自愈机制** |
-| **MMM-10** | **一次「零命中」假阴性**：检索根用绝对形式却在子目录下执行 → 沿推理链放大成三条错误结论 | 本轮 | **纪律**：检索必须在仓库根执行；**「零命中」必须用另一条等价检索复核** |
+| **MMM-10** | **一次「零命中」假阴性**：检索根用绝对形式却在子目录下执行 → 沿推理链放大成三条错误结论 | 本轮 | **纪律**：检索必须在分析仓库根执行；**「零命中」必须用另一条等价检索复核** |
 
 ---
 

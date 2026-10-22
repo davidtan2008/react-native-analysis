@@ -7,6 +7,7 @@ platforms: [cross]
 architecture: [fabric]
 layer: T1
 symbols: ["YGNodeLayoutGetMeasuredDimensions", "LayoutMetrics"]
+sourceRoot: react-native
 claims: [SS-1, SS-2, SS-3, SS-4, SS-5, SS-6, SS-7, SS-8, SS-9]
 ---
 # 53 · 渲染器核心与 Yoga：两组哈希/相等字段集不一致、一个只拒 NaN 与负数的测量消毒、一个无上界的文本布局缓存
@@ -19,7 +20,7 @@ claims: [SS-1, SS-2, SS-3, SS-4, SS-5, SS-6, SS-7, SS-8, SS-9]
 > `ReactCommon/yoga/yoga/numeric/Comparison.h`、
 > `renderer/components/text/ParagraphShadowNode.cpp`
 >
-> **基线**：react-native @ `9b131e42` · 跨平台 · **Fabric 新架构路径**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · 跨平台 · **Fabric 新架构路径**
 >
 > **前置**：[09 文档](./09-渲染器核心与差分算法.md) 记录渲染器核心；
 > [12 文档](./12-UI一致性与ShadowTree修订版.md) 记录 ShadowTree 修订；

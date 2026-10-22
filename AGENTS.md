@@ -12,6 +12,7 @@
 | `docs/arch/diagrams/` | 交互式架构图（HTML）及其生成凭据 |
 | `.archify/` | 架构图生成工作区（archify skill 的候选 JSON 与浏览器证据） |
 | `react-native/` | **git submodule** —— `facebook/react-native`，钉死在 `9b131e42d12` |
+| `HANDOVER.md` | **交接文档** —— 项目全貌、方法论、剩余工作的完整计划 |
 
 `react-native/` 是 submodule，**不要直接改它**。文档里的行号断言是针对该 commit 验证的。
 
@@ -34,7 +35,8 @@ node docs/arch/audit/coverage.mjs --gaps
 
 - `REPO` = **RN 源码根** = `react-native/` 子模块目录
 - `DOCS` = **文档根** = `docs/arch/`
-- `build-index.mjs` / `check-index.mjs` 用 `process.cwd()`，**必须在仓库根运行**
+- `build-index.mjs` / `check-index.mjs` 基于 `__dirname` 推导仓库根，**cwd 无关**，从任何目录运行结果相同
+- 文档 front-matter 的 `sourceRoot: react-native` 声明该篇的**路径基准 = submodule 根**，由 `check-index.mjs` 校验
 
 ## Working rules
 

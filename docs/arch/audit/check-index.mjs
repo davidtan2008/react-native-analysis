@@ -12,11 +12,16 @@
 // 退出码 0 = 全部通过；非 0 = 有问题。
 // ────────────────────────────────────────────────────────────────────────
 import fs from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const REPO = process.cwd();
+// 分析仓库根：从脚本自身位置推导，不依赖调用方的 cwd
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO = path.resolve(__dirname, '../../..');
 const ARCH = path.join(REPO, 'docs/arch');
+// RN 源码根（git submodule）
+const RN_ROOT = path.join(REPO, 'react-native');
 const OUT = path.join(ARCH, 'INDEX');
 const TAX = JSON.parse(fs.readFileSync(path.join(OUT, '_taxonomy.json'), 'utf8'));
 
@@ -69,6 +74,13 @@ for (const f of fs.readdirSync(ARCH).filter(x => /^\d\d-.*\.md$/.test(x)).sort()
   docs.push(fm);
 }
 
+// ── 0. 前置：RN 源码 submodule 必须已初始化 ──
+if (!fs.existsSync(path.join(RN_ROOT, 'packages/react-native'))) {
+  bad('SUBMODULE_MISSING',
+    `RN 源码 submodule 未初始化（${path.relative(REPO, RN_ROOT)}/packages/react-native 不存在）` +
+    ` —— 请先执行 \`git submodule update --init --recursive\`；否则源码侧断言会大面积误报`);
+}
+
 // ── 1. 必填字段 + 枚举合法 ────────────────────────────────────────────
 const REQUIRED = ['id', 'title', 'topic', 'symptoms', 'platforms', 'architecture', 'layer', 'symbols', 'claims'];
 for (const d of docs) {
@@ -82,6 +94,11 @@ for (const d of docs) {
   for (const p of d._platforms) if (!['cross', 'ios', 'android'].includes(p)) bad('BAD_PLATFORM', `${d._file} 的 platform \`${p}\` 非法`);
   for (const a of d._architecture) if (!['cross', 'fabric', 'legacy'].includes(a)) bad('BAD_ARCH', `${d._file} 的 architecture \`${a}\` 非法`);
   if (!/^T[0-4]$/.test(d.layer || '')) bad('BAD_LAYER', `${d._file} 的 layer \`${d.layer}\` 非法`);
+  // ── 2b. sourceRoot 字段：路径基准声明 ──
+  if (d.sourceRoot !== 'react-native') {
+    bad('BAD_SOURCE_ROOT', `${d._file} 的 sourceRoot 应为 \`react-native\`（当前 ${d.sourceRoot}）`);
+  }
+
   // ── 3. 至少一项可检索维度非空 ──
   if (!d._symptoms.length && !d._symbols.length) bad('UNRETRIEVABLE', `${d._file} 既无 symptoms 也无 symbols —— 无法被检索到`);
 }
@@ -145,7 +162,8 @@ console.log(`结论登记 ${docs.reduce((n, d) => n + d._claims.length, 0)} 条 
 console.log('');
 if (!problems.length) {
   console.log('✓ 全部通过');
-  console.log('  · front-matter 完整且枚举值合法');
+  console.log('  · front-matter 完整且枚举值合法（含 sourceRoot 路径基准声明）');
+  console.log('  · RN 源码 submodule 已初始化（路径基准可用）');
   console.log('  · claims 与各文档的「已发现的问题」表双向一致');
   console.log('  · 每篇文档至少有一个可检索维度');
   console.log('  · 4 个生成文件与重新生成的结果逐字节一致');

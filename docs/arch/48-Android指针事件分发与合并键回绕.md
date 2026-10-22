@@ -7,6 +7,7 @@ platforms: [android]
 architecture: [cross]
 layer: T3
 symbols: ["JSPointerDispatcher", "PointerEvents"]
+sourceRoot: react-native
 claims: [NN-1, NN-2, NN-3, NN-4, NN-5, NN-6, NN-7]
 ---
 # 48 · Android 指针事件分发：801 行的命中路径管理、16 位合并键回绕与 0.1px 阈值
@@ -16,7 +17,7 @@ claims: [NN-1, NN-2, NN-3, NN-4, NN-5, NN-6, NN-7]
 > `uimanager/events/PointerEvent.kt`、
 > `uimanager/PointerEvents.kt`
 >
-> **基线**：react-native @ `9b131e42` · Android 侧 · **新旧架构共用**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧 · **新旧架构共用**
 > （Paper 与 Fabric 走同一条 `JSPointerDispatcher`）
 >
 > **前置**：[03 文档](./03-核心技术原理.md) §事件系统记录 JS 侧合成事件与优先级；

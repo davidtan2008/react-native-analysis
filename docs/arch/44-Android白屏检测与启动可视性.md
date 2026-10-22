@@ -7,6 +7,7 @@ platforms: [android]
 architecture: [cross]
 layer: T1
 symbols: ["ReactRootView", "setIsFabric"]
+sourceRoot: react-native
 claims: [II-1, II-2, II-3, II-4, II-5]
 ---
 # 44 · Android 侧的白屏与启动可视性：CONTENT_APPEARED 标志、Systrace 三段与 DevLoadingView 的「不可达」
@@ -19,7 +20,7 @@ claims: [II-1, II-2, II-3, II-4, II-5]
 > · `packages/react-native/ReactAndroid/src/main/java/com/facebook/react/devsupport/interfaces/DevLoadingViewManager.kt`
 > · `packages/react-native/ReactAndroid/src/main/java/com/facebook/react/devsupport/DefaultDevLoadingViewImplementation.kt`（178）
 > · `packages/react-native/ReactAndroid/src/main/java/com/facebook/react/bridge/ReactMarkerConstants.kt:75`
-> **基线**：react-native @ `9b131e42` · Android 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧
 > **前置**：[40 文档](./40-Android打点体系ReactMarker.md) 记录 114 个 marker 的实测使用率
 > 与 `CONTENT_APPEARED` 的归属；[41 文档](./41-Android崩溃与错误路径.md) 记录
 > `DevSupportManager` 的三实现继承树；[19 文档](./19-iOS平台层与Surface生命周期.md) 记录

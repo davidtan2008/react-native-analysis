@@ -7,6 +7,7 @@ platforms: [android]
 architecture: [cross]
 layer: T1
 symbols: ["NativeModuleCallExceptionHandler", "JSApplicationIllegalArgumentException"]
+sourceRoot: react-native
 claims: [FF-1, FF-2, FF-3, FF-4, FF-5, FF-6, FF-7, FF-8]
 ---
 # 41 · Android 侧的崩溃与错误路径：DevSupportManager 的三实现继承树与「RN 不上报」的确证
@@ -18,7 +19,7 @@ claims: [FF-1, FF-2, FF-3, FF-4, FF-5, FF-6, FF-7, FF-8]
 > + `modules/core/ExceptionsManagerModule.kt`
 > + `bridge/JSExceptionHandler.kt`、`bridge/DefaultJSExceptionHandler.kt`
 > + `ReactDelegate.kt` 的四处类型判断
-> **基线**：react-native @ `9b131e42` · Android 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧
 > **前置**：[04 文档](./04-崩溃日志捕获收集处理上传.md) 在 iOS 侧得出
 > 「RN 不实现崩溃上传」的结论；[05 文档](./05-监控检测原理与流程.md) 记录检测/上报原理；
 > [22 文档](./22-iOS崩溃UI层RedBox与LogBox.md) 记录 iOS 的 RedBox/LogBox；

@@ -7,12 +7,13 @@ platforms: [android]
 architecture: [legacy]
 layer: T3
 symbols: ["UIManagerModule", "NativeViewHierarchyManager"]
+sourceRoot: react-native
 claims: [AIM-1, AIM-2, AIM-3, AIM-4, AIM-5, AIM-6, AIM-7, AIM-8]
 ---
 # 16 · Android uimanager：旧架构的掏空状态与属性反射机制
 
 > **模块**：C2 · 子批次 4b（`ReactAndroid/.../uimanager`，130 个非测试文件）
-> **基线**：react-native @ `9b131e42` · Android 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧
 > **前置**：[15 文档](./15-Android启动与宿主API.md) 讲了宿主与启动；[10 文档](./10-Fabric组件层与视图扁平化.md) 讲了 C++ 侧扁平化。
 > 本文讲 **Android 的 uimanager 层现在还剩什么** —— 答案是：**一半已被系统性掏空成空壳**。
 

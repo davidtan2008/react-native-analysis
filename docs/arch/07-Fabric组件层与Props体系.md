@@ -7,12 +7,13 @@ platforms: [cross]
 architecture: [fabric]
 layer: T1
 symbols: ["ShadowNode", "Props", "BaseViewProps"]
+sourceRoot: react-native
 claims: []
 ---
 # 07 · Fabric 组件层：Props 体系与组件描述符
 
 > **模块**：A2（`ReactCommon/react/renderer/components`，218 个非测试文件）
-> **基线**：react-native @ `9b131e42`
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根）
 > **本文只覆盖**该模块中「所有组件共享的抽象层」。各具体组件（Text/TextInput/ScrollView…）的业务逻辑另见后续文档。
 
 ---

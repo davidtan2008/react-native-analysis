@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [cross]
 layer: T3
 symbols: ["RCTDevMenu", "RCTDevLoadingView"]
+sourceRoot: react-native
 claims: []
 ---
 # 28 · iOS Dev 工具链：DevMenu / DevSettings / DevLoadingView 的四层门控
 
 > **模块**：C1 · `CoreModules/` 的 Dev 系列（5 文件 / 1836 行）
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[05 文档](./05-监控检测原理与流程.md) 讲了启动与白屏；
 > [22 文档](./22-iOS崩溃UI层RedBox与LogBox.md) 讲了 `#if RCT_DEV_MENU` 的首次出现；
 > [27 文档](./27-iOS帧驱动与性能监控.md) 讲了 `RCTPerfMonitorCls` 的 `return nil`。

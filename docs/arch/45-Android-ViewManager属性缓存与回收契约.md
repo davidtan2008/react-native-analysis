@@ -7,6 +7,7 @@ platforms: [android]
 architecture: [legacy]
 layer: T3
 symbols: ["ViewManager", "ViewManagerPropertyUpdater"]
+sourceRoot: react-native
 claims: [JJ-1, JJ-2, JJ-3, JJ-3b, JJ-4, JJ-5]
 ---
 # 45 · Android 侧 ViewManager 的属性反射缓存与回收契约：94 行基类重置、API 28 门槛与两处 `@Suppress("DEPRECATION")`
@@ -16,7 +17,7 @@ claims: [JJ-1, JJ-2, JJ-3, JJ-3b, JJ-4, JJ-5]
 > `prepareToRecycleView` 在 `:76-168`）
 > · `packages/react-native/ReactAndroid/src/main/java/com/facebook/react/uimanager/ViewManagersPropertyCache.kt`（552）
 > · `packages/react-native/ReactAndroid/src/main/java/com/facebook/react/uimanager/ViewManagerPropertyUpdater.kt`
-> **基线**：react-native @ `9b131e42` · Android 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧
 > **前置**：[42 文档](./42-Android内存压力与View回收池.md) 记录 6 个 opt-in ViewManager
 > 与 `ReactViewGroup.recycleView()` 的 18 字段集中重置；
 > [36 文档](./36-legacy-View层ComponentData与hitTest.md) 记录 iOS 侧

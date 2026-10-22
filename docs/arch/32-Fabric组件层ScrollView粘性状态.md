@@ -7,12 +7,13 @@ platforms: [cross]
 architecture: [fabric]
 layer: T1
 symbols: ["ScrollViewShadowNode", "ScrollViewState"]
+sourceRoot: react-native
 claims: []
 ---
 # 32 · Fabric 组件层（二）：ScrollView 的粘性状态与节流缺陷
 
 > **模块**：A2 · `ComponentViews/ScrollView/`（4 文件 / 1942 行）+ `RCTEnhancedScrollView.mm`（319 行）
-> **基线**：react-native @ `9b131e42` · Fabric
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Fabric
 > **前置**：[31 文档](./31-Fabric组件层View与回收池.md) 记录了回收池机制与
 > `RCTViewComponentView.prepareForRecycle` 的重置契约；
 > [21 文档](./21-iOS-Fabric组件层与ComponentView.md) 记录了 `removeClippedSubviews`。

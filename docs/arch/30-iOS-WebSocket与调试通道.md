@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [cross]
 layer: T3
 symbols: ["RCTInspector", "RCTWebSocket"]
+sourceRoot: react-native
 claims: []
 ---
 # 30 · iOS WebSocket 与调试通道：RCTWebSocketModule / 注册表 / 编译期调试宏
 
 > **模块**：C1 · `CoreModules/` 的调试通道与注册族（9 文件 / 1513 行）
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[28 文档](./28-iOS-Dev工具链与四层门控.md) 记录了 Dev 工具链的四层门控
 > 与 `REACT_NATIVE_DEBUGGER_MODE_PROD` 生产调试通道；
 > [25 文档](./25-iOS桥接核心与启动性能标签.md) 记录了 `moduleDataForName:` 的缺失。

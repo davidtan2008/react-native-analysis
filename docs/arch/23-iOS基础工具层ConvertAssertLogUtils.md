@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [cross]
 layer: T3
 symbols: ["RCTConvert", "RCTAssert", "RCTLog"]
+sourceRoot: react-native
 claims: []
 ---
 # 23 · iOS 基础工具层：Convert / Assert / Log / Utils / Constants
 
 > **模块**：C1 · `React/Base/` 的工具层（16 文件 / 4563 行）
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[22 文档](./22-iOS崩溃UI层RedBox与LogBox.md) 讲了 RedBox/LogBox 的门控；
 > [20 文档](./20-iOS-CoreModules与崩溃终止机制.md) 讲了 `RCTFatal` 的调用链。
 >

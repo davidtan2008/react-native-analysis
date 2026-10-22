@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [cross]
 layer: T3
 symbols: ["RCTFatal", "RCTSetLogFunction"]
+sourceRoot: react-native
 claims: [CM-1, CM-2, CM-3, CM-4, CM-5, CM-6, CM-7]
 ---
 # 20 · iOS CoreModules：崩溃上报与 RCTFatal 终止机制
 
 > **模块**：C1 · `React/CoreModules`（71 个源文件，**本文覆盖 6 个关键文件**）
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[04 文档](./04-崩溃日志捕获收集处理上传.md) 给了崩溃链路全貌与「RN 不装崩溃处理器」的结论。
 > 本文**补上 04 文档缺失的一环**：RN 主动终止进程是靠 `RCTFatal` + 未捕获 `NSException` 实现的，
 > 而这条链路的**行为随 Debug/Release 显著不同**。

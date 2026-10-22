@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [cross]
 layer: T3
 symbols: ["RCTCxxBridge", "RCTPerformanceLogger"]
+sourceRoot: react-native
 claims: []
 ---
 # 25 · iOS 桥接核心与启动性能标签：legacy 的空壳化
 
 > **模块**：C1 · `React/Base/` 的桥接核心族（13 文件 / 1387 行）+ 性能标签族（4 文件）
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[15 文档](./15-Android启动与宿主API.md) 讲了 `ReactMarkerConstants` 的 114 个枚举；
 > [24 文档](./24-iOS事件分发触摸管线与JS加载.md) 记录了同批架构清理残留。
 >

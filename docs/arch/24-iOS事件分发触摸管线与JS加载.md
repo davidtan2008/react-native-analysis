@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [cross]
 layer: T3
 symbols: ["RCTTouchHandler", "RCTEventDispatcher"]
+sourceRoot: react-native
 claims: []
 ---
 # 24 · iOS 事件分发、触摸管线与 JS 加载
 
 > **模块**：C1 · `React/Base/` 的事件与加载族（22 文件 / 2443 行）+ `CoreModules/RCTEventDispatcher.mm`
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[03 文档](./03-核心技术原理.md) 讲了 Fabric 侧的事件循环；
 > [13 文档](./13-JS启动装配.md) 讲了 JS 装配。
 >

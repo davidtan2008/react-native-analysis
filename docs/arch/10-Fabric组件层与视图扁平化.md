@@ -7,12 +7,13 @@ platforms: [cross]
 architecture: [fabric]
 layer: T1
 symbols: ["ViewShadowNode", "ViewProps"]
+sourceRoot: react-native
 claims: []
 ---
 # 10 · Fabric 组件层：视图扁平化与平台 Trait
 
 > **模块**：A2（`ReactCommon/react/renderer/components`，218 个非测试文件）
-> **基线**：react-native @ `9b131e42`
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根）
 > **前置**：[07 文档](./07-Fabric组件层与Props体系.md) 讲了 Props/Descriptor 契约，[09 文档](./09-渲染器核心与差分算法.md) 讲了 ShadowNode 与差分。
 > 本文回答：**ShadowNode 树如何变成原生 View 树**，以及**为什么 iOS 与 Android 的扁平化规则不同**。
 

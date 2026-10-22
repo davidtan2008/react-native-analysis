@@ -7,12 +7,13 @@ platforms: [android]
 architecture: [legacy]
 layer: T3
 symbols: ["ViewManager", "BaseViewManager"]
+sourceRoot: react-native
 claims: [VW-1, VW-2, VW-3, VW-4, VW-5, VW-6, VW-7, VW-8, VW-9]
 ---
 # 17 · Android View 层：属性反射分派与 props 差异语义
 
 > **模块**：C2 · 子批次 4c（`ReactAndroid/.../views`，137 个非测试文件 + `uimanager` 属性机制补充）
-> **基线**：react-native @ `9b131e42` · Android 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧
 > **前置**：[10 文档](./10-Fabric组件层与视图扁平化.md) 讲了 C++ 侧扁平化；[16 文档](./16-Android-uimanager与旧架构掏空.md) 讲了 uimanager 的掏空状态。
 > 本文讲 **JS 样式如何变成原生 View 属性**，以及一个容易踩的语义陷阱：**删除属性 ≠ 恢复默认**。
 

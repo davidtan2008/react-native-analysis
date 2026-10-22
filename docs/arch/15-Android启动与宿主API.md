@@ -7,12 +7,13 @@ platforms: [android]
 architecture: [cross]
 layer: T3
 symbols: ["ReactActivity", "ReactHost", "ReactInstance"]
+sourceRoot: react-native
 claims: []
 ---
 # 15 · Android 启动与宿主 API：ReactHost / ReactInstanceManager
 
 > **模块**：E7（`ReactAndroid/src/main/java/com/facebook/react` 根级 API 与横切小包，135 个非测试文件）
-> **基线**：react-native @ `9b131e42` · Android 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧
 > **前置**：[11 文档](./11-运行时与错误桥.md) 讲了 C++ 侧 `ReactInstance`；[13 文档](./13-JS启动装配.md) 讲了 JS 侧装配。
 > 本文讲 **Android 的 Java/Kotlin 层如何把这两端接起来**，以及启动过程中**已经埋好的监控数据源**。
 

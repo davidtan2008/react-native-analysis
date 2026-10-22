@@ -7,6 +7,7 @@ platforms: [ios]
 architecture: [cross]
 layer: T2
 symbols: ["RCTTurboModule", "RCTTurboModuleManager"]
+sourceRoot: react-native
 claims: [DD-1, DD-2, DD-3, DD-4, DD-5, DD-6, DD-7, DD-8]
 ---
 # 39 · TurboModule 的 iOS 平台层：四步解析、模块创建的双重检查锁与异常转换
@@ -14,7 +15,7 @@ claims: [DD-1, DD-2, DD-3, DD-4, DD-5, DD-6, DD-7, DD-8]
 > **模块**：B1 · `ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/`
 > （`RCTTurboModule.mm` 1012、`RCTTurboModuleManager.mm` 1009、
 > `RCTInteropTurboModule.mm` 701 + 3 头文件 344）
-> **基线**：react-native @ `9b131e42` · 新架构（Fabric + TurboModule）
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · 新架构（Fabric + TurboModule）
 > **前置**：[23 文档](./23-iOS基础工具层ConvertAssertLogUtils.md) 记录了
 > `RCT_CUSTOM_CONVERTER` 的 **Debug/Release 语义反转**（Release 无 `@try`）；
 > [37 文档](./37-legacy布局层被掏空与ShadowQueue转用.md) 记录了 legacy 侧的退役；

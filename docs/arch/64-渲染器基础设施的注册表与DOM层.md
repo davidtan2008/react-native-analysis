@@ -7,6 +7,7 @@ platforms: [cross]
 architecture: [fabric]
 layer: T1
 symbols: ["ComponentDescriptorRegistry", "ComponentDescriptorProviderRegistry", "componentNameByReactViewName", "Element", "ComponentBuilder", "MapBuffer", "NativeDOM"]
+sourceRoot: react-native
 claims: [DDD-1, DDD-1b, DDD-2, DDD-3, DDD-4, DDD-5, DDD-6, DDD-7, DDD-8, DDD-9, DDD-10, DDD-11, DDD-12]
 ---
 # 64 · 渲染器基础设施：三处锁语义错配、一个 JS 可控的栈溢出向量、一个未文档化的信任边界
@@ -14,7 +15,7 @@ claims: [DDD-1, DDD-1b, DDD-2, DDD-3, DDD-4, DDD-5, DDD-6, DDD-7, DDD-8, DDD-9, 
 > **模块**：E1 · `packages/react-native/ReactCommon/react/renderer/` 的五个基础子目录
 > （`componentregistry` / `element` / `attributedstring` / `mapbuffer` / `dom`）
 >
-> **基线**：react-native @ `9b131e42` · 跨平台 C++ · **Fabric 新架构**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · 跨平台 C++ · **Fabric 新架构**
 >
 > **前置**：[08 文档](./08-组件注册表与惰性注册.md) 记录组件注册表与惰性注册；
 > [09 文档](./09-渲染器核心与差分算法.md) 记录渲染器核心与差分；

@@ -7,6 +7,7 @@ platforms: [cross]
 architecture: [fabric]
 layer: T1
 symbols: ["ScrollViewShadowNode", "CullingContext"]
+sourceRoot: react-native
 claims: [AAA-1, AAA-2, AAA-4, AAA-5, AAA-6, AAA-10, AAA-11]
 ---
 # 61 · ScrollView 的状态与裁剪：iOS 独有的 RTL 修正、三处生命周期钩子的正确配对、一个钉死 commit 的注释链接
@@ -17,7 +18,7 @@ claims: [AAA-1, AAA-2, AAA-4, AAA-5, AAA-6, AAA-10, AAA-11]
 > `packages/react-native/ReactAndroid/src/main/java/com/facebook/react/views/scroll/MaintainVisibleScrollPositionHelper.kt`（166）、
 > `ReactAndroid/.../scroll/ReactScrollView.kt:397-455`
 >
-> **基线**：react-native @ `9b131e42` · 双端 · **Fabric 新架构**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · 双端 · **Fabric 新架构**
 >
 > **前置**：[32 文档](./32-Fabric组件层ScrollView粘性状态.md) 记录 ScrollView 组件层的粘性状态；
 > [60 文档](./60-View组件原语层的位号与枚举.md) 记录 View 组件原语层；

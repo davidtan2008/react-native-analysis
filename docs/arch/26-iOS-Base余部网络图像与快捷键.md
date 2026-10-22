@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [cross]
 layer: T3
 symbols: ["RCTImageLoader", "RCTKeyChain", "RCTNetworking"]
+sourceRoot: react-native
 claims: []
 ---
 # 26 · iOS Base 余部：网络流解析、图像源与快捷键的三个缺陷
 
 > **模块**：C1 · `React/Base/` 余部（25 文件 / 1700 行）
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[23 文档](./23-iOS基础工具层ConvertAssertLogUtils.md) 讲了 Convert/Assert/Log/Utils；
 > [24 文档](./24-iOS事件分发触摸管线与JS加载.md) 记录了 JS 加载与 reload。
 >

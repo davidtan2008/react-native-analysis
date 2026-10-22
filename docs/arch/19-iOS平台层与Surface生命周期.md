@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [fabric]
 layer: T3
 symbols: ["SurfaceHandler", "RCTSurfaceHostingProxy"]
+sourceRoot: react-native
 claims: [IOS-1, IOS-2, IOS-3, IOS-4, IOS-5, IOS-6, IOS-7, IOS-8, IOS-9, IOS-10]
 ---
 # 19 · iOS 平台层：Surface 生命周期与性能标记
 
 > **模块**：C1 + E10（`React/Base`、`React/Fabric`、`React/CoreModules`、`React/Views`、`React/Modules`、`ReactApple`）
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[15 文档](./15-Android启动与宿主API.md) 讲了 Android 宿主与 `ReactMarker`；[12 文档](./12-UI一致性与ShadowTree修订版.md) 讲了修订版锁定。
 > 本文讲 **iOS 的对应实现**，并逐条标出它与 Android 的**不对称** —— 这些差异是两轮复核中最容易出错的地方。
 

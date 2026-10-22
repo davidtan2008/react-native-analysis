@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [cross]
 layer: T3
 symbols: ["RCTRedBox", "RCTLogBox"]
+sourceRoot: react-native
 claims: [RB-1, RB-2, RB-3, RB-4, RB-5, RB-6]
 ---
 # 22 · iOS 崩溃 UI 层：RedBox / LogBox 的双层门控
 
 > **模块**：C1 · `React/CoreModules` 的 `RCTRedBox*`（4 文件 / 1006 行）+ `RCTLogBox*`（2 文件 / 190 行）
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[20 文档](./20-iOS-CoreModules与崩溃终止机制.md) 讲了 `RCTExceptionsManager` 如何分派到 RedBox。
 > 本文讲 **RedBox / LogBox 在 Release 下为什么「消失」** —— 结论是**两层独立且都靠编译期宏的门控**。
 

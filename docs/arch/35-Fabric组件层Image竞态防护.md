@@ -7,12 +7,13 @@ platforms: [cross]
 architecture: [fabric]
 layer: T1
 symbols: ["ImageShadowNode", "ImageSource"]
+sourceRoot: react-native
 claims: []
 ---
 # 35 · Fabric 组件层（五）：Image 的回收竞态防护与小型组件族
 
 > **模块**：A2 · `ComponentViews/` 的 18 个小文件（2118 行）
-> **基线**：react-native @ `9b131e42` · Fabric
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Fabric
 > **前置**：[31 文档](./31-Fabric组件层View与回收池.md) 记录了回收池与
 > `RCTViewComponentView` 的重置契约；[33 文档](./33-Fabric组件层TextInput事件计数.md)
 > 总结了回收契约的三类处置。

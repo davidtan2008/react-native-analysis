@@ -13,9 +13,12 @@
 // check-index.mjs 校验生成物是最新的（重新生成后必须零 diff）。
 // ────────────────────────────────────────────────────────────────────────
 import fs from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
-const REPO = process.cwd();
+// 分析仓库根：从脚本自身位置推导，不依赖调用方的 cwd
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO = path.resolve(__dirname, '../../..');
 const ARCH = path.join(REPO, 'docs/arch');
 const OUT = path.join(ARCH, 'INDEX');
 const TAX = JSON.parse(fs.readFileSync(path.join(OUT, '_taxonomy.json'), 'utf8'));

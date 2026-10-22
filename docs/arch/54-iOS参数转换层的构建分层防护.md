@@ -7,6 +7,7 @@ platforms: [ios]
 architecture: [cross]
 layer: T3
 symbols: ["RCTConvert", "RCT_JSON_CONVERTER"]
+sourceRoot: react-native
 claims: [TT-1, TT-2, TT-3, TT-4, TT-5, TT-6]
 ---
 # 54 · iOS 参数转换层：release 构建下三层防护全部消失，类型错误从「可捕获的日志」变成远处的崩溃
@@ -17,7 +18,7 @@ claims: [TT-1, TT-2, TT-3, TT-4, TT-5, TT-6]
 > `React/Base/RCTModuleMethod.mm`（618）、
 > `React/Base/RCTDefines.h`（169）
 >
-> **基线**：react-native @ `9b131e42` · iOS 侧 · **legacy 架构（Paper / Bridge）路径**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧 · **legacy 架构（Paper / Bridge）路径**
 >
 > **前置**：[38 文档](./38-Modules余部EventEmitter与LayoutAnimation.md) 记录
 > `RCT_CUSTOM_CONVERTER` 的 Debug/Release 语义，并明确指出

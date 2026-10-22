@@ -7,13 +7,14 @@ platforms: [cross]
 architecture: [legacy]
 layer: T3
 symbols: ["Instance", "NativeToJsBridge", "ModuleRegistry", "JSCallInvoker", "normalizeName"]
+sourceRoot: react-native
 claims: [III-1, III-2, III-3, III-4, III-5, III-6, III-7, III-8, III-9, III-10, III-11, III-12, III-13]
 ---
 # 69 · legacy 桥的 C++ 侧：四处理性的「工作被静默丢弃」、一个无上限的调用缓冲，以及两套互不知情的组件名归一化
 
 > **模块**：A6 · `packages/react-native/ReactCommon/cxxreact/`（本轮读 6 个文件）
 >
-> **基线**：react-native @ `9b131e42` · 跨平台 C++ · **legacy 架构**（`#ifndef RCT_REMOVE_LEGACY_ARCH`）
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · 跨平台 C++ · **legacy 架构**（`#ifndef RCT_REMOVE_LEGACY_ARCH`）
 >
 > **前置**：[14 文档](./14-TurboModule类型桥与跨线程生命周期.md) 记录 TurboModule 类型桥与跨线程生命周期；
 > [39 文档](./39-TurboModule的iOS平台层.md) 记录 TurboModule 的 iOS 侧；

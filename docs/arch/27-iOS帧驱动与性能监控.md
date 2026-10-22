@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [cross]
 layer: T3
 symbols: ["RCTPerformanceLogger", "RCTFrameUpdate"]
+sourceRoot: react-native
 claims: []
 ---
 # 27 · iOS 帧驱动与性能监控：RCTTiming / RCTPerfMonitor / RCTFPSGraph
 
 > **模块**：C1 · `CoreModules/` 的帧监控族（3 文件 / 1057 行）+ `Base/RCTDisplayLink.m` / `RCTFrameUpdate`
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[03 文档](./03-核心技术原理.md) 讲了 Fabric 的帧循环；
 > [05 文档](./05-监控检测原理与流程.md) §7 讲了卡顿/掉帧；
 > [25 文档](./25-iOS桥接核心与启动性能标签.md) 讲了 `RCTPLTag` 的打点覆盖。

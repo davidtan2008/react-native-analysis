@@ -7,13 +7,14 @@ platforms: [cross]
 architecture: [cross]
 layer: T4
 symbols: ["floatEquality", "SimpleThreadSafeCache", "ContextContainer", "hash_combine"]
+sourceRoot: react-native
 claims: [CCC-1, CCC-2, CCC-3, CCC-4, CCC-5, CCC-6, CCC-7, CCC-8, CCC-9, CCC-10, CCC-11, CCC-12, CCC-15]
 ---
 # 63 · ReactCommon 工具层：一次实测出的 `+inf` 恒不相等、一条被 `unordered_map` 证伪的哈希契约，以及一个 ASan 抓到的 use-after-free
 
 > **模块**：Z1 · `packages/react-native/ReactCommon/react/utils/`（本轮读 6 个文件）
 >
-> **基线**：react-native @ `9b131e42` · 跨平台 C++（`ReactCommon`）· **与架构无关**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · 跨平台 C++（`ReactCommon`）· **与架构无关**
 >
 > **前置**：[53 文档](./53-渲染器核心与Yoga的数值边界.md) 记录 Yoga 测量消毒放行 `±inf`；
 > [61 文档](./61-ScrollView状态与裁剪的平台条件.md) 记录裁剪与状态计算；

@@ -202,6 +202,7 @@ done
 | [`docs/arch/README.md`](./docs/arch/README.md) | 74 篇文档的清单与内容摘要 |
 | [`docs/arch/audit/README.md`](./docs/arch/audit/README.md) | 审计工具链详解 + 复核教训 |
 | [`docs/arch/audit/READ-PLAN.md`](./docs/arch/audit/READ-PLAN.md) | 38 个模块 / 14 个批次的全量通读计划 |
+| [`HANDOVER.md`](./HANDOVER.md) | **交接文档** —— 项目全貌、方法论、剩余工作的优先级与完整计划 |
 | [`AGENTS.md`](./AGENTS.md) | 在本仓库中工作（尤其是自动化 agent）的约定 |
 
 ---

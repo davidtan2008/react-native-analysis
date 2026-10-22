@@ -7,6 +7,7 @@ platforms: [cross]
 architecture: [cross]
 layer: T2
 symbols: ["DebugStringConvertible", "RN_DEBUG_STRING_CONVERTIBLE", "flags.h"]
+sourceRoot: react-native
 claims: [LLL-1, LLL-2, LLL-3, LLL-4, LLL-5, LLL-6, LLL-7, LLL-8, LLL-9, LLL-10]
 ---
 # 72 · 渲染器的调试字符串机制：默认无限递归深度、随构建配置变化的类形状，以及两个同名不同义的 `flags.h`
@@ -15,7 +16,7 @@ claims: [LLL-1, LLL-2, LLL-3, LLL-4, LLL-5, LLL-6, LLL-7, LLL-8, LLL-9, LLL-10]
 > + `packages/react-native/ReactCommon/react/renderer/bridging/`（2）
 > + `packages/react-native/ReactCommon/react/renderer/viewtransition/`（2）
 >
-> **基线**：react-native @ `9b131e42` · 跨平台 C++ · **与架构无关**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · 跨平台 C++ · **与架构无关**
 >
 > **前置**：[59 文档](./59-Promise的reject跨平台契约.md) 记录「注释描述的能力不存在」；
 > [62 文档](./62-CxxStableAPI的三档守卫与它们的惰性.md) 记录 `RN_DEBUG_STRING_CONVERTIBLE` 的派生规则与三档 Guard；

@@ -7,6 +7,7 @@ platforms: [android]
 architecture: [cross]
 layer: T1
 symbols: ["onTrimMemory", "ViewPool", "ReactNativeApplicationEntryPoint"]
+sourceRoot: react-native
 claims: [GG-1, GG-2, GG-3, GG-4, GG-5, GG-6, GG-7, GG-8, GG-9]
 ---
 # 42 · Android 侧的两条内存压力路径与 View 回收池：无上限栈与 18 字段重置的正面样本
@@ -21,7 +22,7 @@ claims: [GG-1, GG-2, GG-3, GG-4, GG-5, GG-6, GG-7, GG-8, GG-9]
 > · `packages/react-native/ReactAndroid/src/main/java/com/facebook/react/fabric/FabricUIManager.java`
 > + 6 个 opt-in 回收池的 ViewManager 与 6 个 `recycleView()` 实现
 > + `packages/react-native/ReactCommon/react/runtime/ReactInstance.cpp:652-720`
-> **基线**：react-native @ `9b131e42` · Android 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧
 > **前置**：[05 文档](./05-监控检测原理与流程.md) 记录内存警告的六个 iOS 观察者与
 > `handleMemoryPressureJs` 的分级；[31 文档](./31-Fabric组件层View与回收池.md) 记录 iOS 侧
 > `RCTComponentViewRegistryRecyclePoolMaxSize = 1024` 与内存警告整池清空；

@@ -7,6 +7,7 @@ platforms: [ios]
 architecture: [cross]
 layer: T3
 symbols: ["RCTEventEmitter", "RCTLayoutAnimation"]
+sourceRoot: react-native
 claims: [CC-1, CC-2, CC-3, CC-4, CC-5, CC-6, CC-7, CC-8, CC-9, CC-10]
 ---
 # 38 · Modules 余部：RCTEventEmitter 的活跃度、LayoutAnimation 的整链失效与 RTL 开关
@@ -15,7 +16,7 @@ claims: [CC-1, CC-2, CC-3, CC-4, CC-5, CC-6, CC-7, CC-8, CC-9, CC-10]
 > `RCTLayoutAnimation.m` 162、`RCTLayoutAnimationGroup.m` 79、
 > `RCTI18nUtil.m` 107、`RCTRedBoxExtraDataViewController.m` 270、
 > `RCTSurfacePresenterStub.m` 36）
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[24 文档](./24-iOS事件分发触摸管线与JS加载.md) 记录了
 > `RCTEventEmitter.js` 在 JS 侧零 import；
 > [37 文档](./37-legacy布局层被掏空与ShadowQueue转用.md) 记录了

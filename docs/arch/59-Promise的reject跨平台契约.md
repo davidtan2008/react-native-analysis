@@ -7,6 +7,7 @@ platforms: [cross]
 architecture: [cross]
 layer: T2
 symbols: ["PromiseImpl", "updateErrorFromErrorData"]
+sourceRoot: react-native
 claims: [YY-1, YY-2, YY-3, YY-4, YY-5]
 ---
 # 59 · Promise 的 reject 契约：双平台两个不同的栈键名、50 帧硬上限、以及 JS 侧零消费者的 `nativeStack*`
@@ -16,7 +17,7 @@ claims: [YY-1, YY-2, YY-3, YY-4, YY-5]
 > `packages/react-native/React/Base/RCTUtils.mm:551-565`、
 > `packages/react-native/Libraries/BatchedBridge/NativeModules.js`（225）
 >
-> **基线**：react-native @ `9b131e42` · 双端 · **仅 legacy 架构（Bridge）**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · 双端 · **仅 legacy 架构（Bridge）**
 >
 > **前置**：[54 文档](./54-iOS参数转换层的构建分层防护.md) 记录 legacy 桥接的构建分层问题；
 > [23 文档](./23-iOS基础工具层ConvertAssertLogUtils.md) 记录 iOS 的 `RCTConvert`/`RCTAssert`/`RCTLog`；

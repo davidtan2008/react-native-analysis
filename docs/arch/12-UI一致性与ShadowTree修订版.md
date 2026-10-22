@@ -7,12 +7,13 @@ platforms: [cross]
 architecture: [fabric]
 layer: T1
 symbols: ["LongLivedObjectCollection", "ShadowNode"]
+sourceRoot: react-native
 claims: [MEM-1, MEM-2, MEM-3, MEM-4, MEM-5]
 ---
 # 12 · UI 一致性：ShadowTree 修订版的锁定与惰性快照
 
 > **模块**：A7（`renderer/consistency` + `renderer/uimanager/consistency`）
-> **基线**：react-native @ `9b131e42`
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根）
 > **前置**：[09 文档](./09-渲染器核心与差分算法.md) 讲了 ShadowNode 不可变与 commit。
 > 本文解决一个具体问题：**JS 线程在一次任务里多次读 shadow tree，会不会读到一半更新的树？**
 

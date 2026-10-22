@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [fabric]
 layer: T3
 symbols: ["RCTViewComponentView", "RCTComponentViewProtocol"]
+sourceRoot: react-native
 claims: [CV-1, CV-2, CV-3, CV-4, CV-5, CV-6, CV-7]
 ---
 # 21 · iOS Fabric 组件层：ComponentView 与 removeClippedSubviews
 
 > **模块**：C1 · `React/Fabric/Mounting/ComponentViews`（16 个子目录 + 2 个根级文件，共 58 个源文件）
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[10 文档](./10-Fabric组件层与视图扁平化.md) 讲了 C++ 侧的扁平化 Trait；
 > [17 文档](./17-Android-View层与属性机制.md) 讲了 Android 侧的属性反射。
 > 本文讲 **iOS 侧组件如何落地**，并对照三方找出平台差异。

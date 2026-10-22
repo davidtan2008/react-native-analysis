@@ -324,6 +324,8 @@ node docs/arch/audit/dirs.mjs --depth 4 --min 10
 要通过全部门禁，遵守：
 
 1. **锚点用完整路径** —— `packages/react-native/.../Foo.cpp:123`，
+   **路径基准是 `react-native/` 子模块根**（不是分析仓库根）——
+   门禁脚本据此定位源码；人在 `react-native/` 子模块里按同一相对路径即可找到文件。
    不要用裸文件名（仓库中存在同名文件，如 3 个 `Props.h`）
 2. **压缩过的代码块要在块内首行标注出处**：
 

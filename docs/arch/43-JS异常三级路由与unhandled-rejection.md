@@ -7,6 +7,7 @@ platforms: [cross]
 architecture: [cross]
 layer: T1
 symbols: ["handleException", "unhandledrejection"]
+sourceRoot: react-native
 claims: [HH-1, HH-2, HH-3, HH-4, HH-5, HH-6, HH-7, HH-8]
 ---
 # 43 · JS 异常的三级路由：RN$handleException 全局函数、Feature Flag 门控与 unhandled rejection 的软异常归属
@@ -16,7 +17,7 @@ claims: [HH-1, HH-2, HH-3, HH-4, HH-5, HH-6, HH-7, HH-8]
 > + `packages/react-native/ReactCommon/react/runtime/ReactInstance.cpp:505-600`
 > + `packages/react-native/scripts/featureflags/ReactNativeFeatureFlags.config.js:883-891`
 > + `packages/react-native/ReactAndroid/src/main/java/com/facebook/react/bridge/PromiseImpl.kt`
-> **基线**：react-native @ `9b131e42` · 跨平台（JS + C++）
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · 跨平台（JS + C++）
 > **前置**：[41 文档](./41-Android崩溃与错误路径.md) 记录 Android 侧异常链的全貌
 > 与「RN 不做崩溃上传」的确证；[22 文档](./22-iOS崩溃UI层RedBox与LogBox.md) 记录
 > iOS 的 RedBox/LogBox；[28 文档](./28-iOS-Dev工具链与四层门控.md) 记录 Dev 工具链门控。

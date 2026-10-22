@@ -7,12 +7,13 @@ platforms: [cross]
 architecture: [fabric]
 layer: T1
 symbols: ["ViewShadowNode", "MountingCoordinator"]
+sourceRoot: react-native
 claims: []
 ---
 # 31 · Fabric 组件层（一）：View 组件与回收池机制
 
 > **模块**：A2 · `React/Fabric/Mounting/ComponentViews/`（58 文件 / 8142 行）的 View 族与回收基础设施
-> **基线**：react-native @ `9b131e42` · Fabric
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Fabric
 > **前置**：[21 文档](./21-iOS-Fabric组件层与ComponentView.md) 讲了 `removeClippedSubviews`
 > 与 `DO_NOT_USE_THIS_IS_BROKEN` 家族；
 > [05 文档](./05-监控检测原理与流程.md) 记录了 iOS 侧 6 个内存警告观察者。

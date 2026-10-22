@@ -7,6 +7,7 @@ platforms: [cross]
 architecture: [cross]
 layer: T2
 symbols: ["__DEV__", "invariant"]
+sourceRoot: react-native
 claims: [VV-1, VV-2, VV-3, VV-4, VV-5, VV-6, VV-7, VV-8]
 ---
 # 56 · JS 层的 `__DEV__` 校验层：一个永远不会触发的 `invariant`、两个 release 下变空的导出函数、66 个文件的校验密度
@@ -17,7 +18,7 @@ claims: [VV-1, VV-2, VV-3, VV-4, VV-5, VV-6, VV-7, VV-8]
 > `Libraries/Modal/Modal.js:194-223`、
 > `Libraries/EventEmitter/NativeEventEmitter.js:110-133`
 >
-> **基线**：react-native @ `9b131e42` · JS 层 · **仅生产构建受影响**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · JS 层 · **仅生产构建受影响**
 >
 > **前置**：[54 文档](./54-iOS参数转换层的构建分层防护.md) 记录
 > **iOS 原生侧**的同类现象：`RCT_DEBUG` 下 5 层防护、release 下 0 层。

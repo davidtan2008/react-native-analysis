@@ -7,12 +7,13 @@ platforms: [cross]
 architecture: [fabric]
 layer: T1
 symbols: ["ModalShadowNode", "VirtualView"]
+sourceRoot: react-native
 claims: []
 ---
 # 34 · Fabric 组件层（四）：Modal 与 VirtualView 的可见性管理
 
 > **模块**：A2 · `ComponentViews/Modal/`（2 文件）、`ComponentViews/VirtualView/`（3 文件）
-> **基线**：react-native @ `9b131e42` · Fabric
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Fabric
 > **前置**：[32 文档](./32-Fabric组件层ScrollView粘性状态.md) 记录了 ScrollView 的
 > `_isAccessibilityAPIUsed` 粘性状态；[33 文档](./33-Fabric组件层TextInput事件计数.md)
 > 总结了回收契约的三类处置。

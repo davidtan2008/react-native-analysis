@@ -120,7 +120,7 @@
 
 ### 图表的生成与复核
 
-每张图的源规格（JSON）保留在仓库根的 `.archify/<类型>-<slug>-<时间戳>/candidate.json`，可据此修改后重新生成。生成与校验使用 Archify：
+每张图的源规格（JSON）保留在分析仓库根的 `.archify/<类型>-<slug>-<时间戳>/candidate.json`，可据此修改后重新生成。生成与校验使用 Archify：
 
 ```bash
 node <archify>/bin/archify.mjs finalize <type> <candidate.json> <out.html> --repo-root <repo> --quality showcase --json

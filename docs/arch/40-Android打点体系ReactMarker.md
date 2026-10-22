@@ -7,6 +7,7 @@ platforms: [android]
 architecture: [cross]
 layer: T3
 symbols: ["ReactMarkerConstants", "ReactMarker"]
+sourceRoot: react-native
 claims: [EE-1, EE-2, EE-3, EE-4, EE-5, EE-6, EE-7, EE-8]
 ---
 # 40 · Android 侧打点体系：ReactMarker 的 114 个常量、38 个零打点与 JNI 字符串映射
@@ -14,7 +15,7 @@ claims: [EE-1, EE-2, EE-3, EE-4, EE-5, EE-6, EE-7, EE-8]
 > **模块**：C2 · `ReactAndroid/src/main/java/com/facebook/react/bridge/ReactMarker.kt`
 > （207 行）+ `ReactMarkerConstants.kt`（130 行）
 > + `ReactAndroid/src/main/jni/react/jni/JReactMarker.cpp`
-> **基线**：react-native @ `9b131e42` · Android 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧
 > **前置**：[05 文档](./05-监控检测原理与流程.md) 记录了检测/监控/上报原理；
 > [06 文档](./06-问题清单与优化建议.md) 记录了 iOS 侧
 > 「22 个 `RCTPLTag` 中 12 个零打点」的 P2-3 清单；

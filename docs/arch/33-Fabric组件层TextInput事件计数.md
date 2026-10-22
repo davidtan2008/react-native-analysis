@@ -7,12 +7,13 @@ platforms: [cross]
 architecture: [fabric]
 layer: T1
 symbols: ["AndroidTextInputProps", "TextInputState"]
+sourceRoot: react-native
 claims: []
 ---
 # 33 · Fabric 组件层（三）：TextInput 的事件计数协议与 Text 的无障碍修复
 
 > **模块**：A2 · `ComponentViews/TextInput/`（2 文件 / 1223 行）+ `ComponentViews/Text/`（3 文件）
-> **基线**：react-native @ `9b131e42` · Fabric
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Fabric
 > **前置**：[32 文档](./32-Fabric组件层ScrollView粘性状态.md) 记录了 ScrollView 的粘性状态
 > 与回收契约的偏离。
 >

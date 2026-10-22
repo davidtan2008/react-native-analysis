@@ -7,6 +7,7 @@ platforms: [android]
 architecture: [cross]
 layer: T3
 symbols: ["FabricUIManagerBinding", "MethodInvoker"]
+sourceRoot: react-native
 claims: [PP-1, PP-2, PP-3, PP-4, PP-5, PP-6, PP-7, PP-8, PP-9, PP-10, PP-11, PP-12, PP-13, PP-14, PP-15, PP-16]
 ---
 # 50 · Android JNI 胶水层：一个按引用捕获局部变量导致的 use-after-free，以及一个抛出裸指针的 `throw new`
@@ -17,7 +18,7 @@ claims: [PP-1, PP-2, PP-3, PP-4, PP-5, PP-6, PP-7, PP-8, PP-9, PP-10, PP-11, PP-
 > `jni/react/jni/MethodInvoker.cpp`、
 > `jni/react/fabric/EventBeatManager.cpp`
 >
-> **基线**：react-native @ `9b131e42` · Android 侧 · **仅 Fabric 新架构路径**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧 · **仅 Fabric 新架构路径**
 >
 > **前置**：[32 文档](./32-Fabric组件层ScrollView粘性状态.md) 记录 Fabric 组件层；
 > [42 文档](./42-Android内存压力与View回收池.md) 记录 Android 内存压力；

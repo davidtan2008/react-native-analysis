@@ -7,6 +7,7 @@ platforms: [cross]
 architecture: [cross]
 layer: T2
 symbols: ["AnimatedInterpolation", "AnimatedNode"]
+sourceRoot: react-native
 claims: [WW-1, WW-2, WW-3, WW-4, WW-5, WW-6]
 ---
 # 57 · 动画节点族：8 条插值校验全在 `__DEV__` 内、一个被主动拒绝的 `[-Infinity, Infinity]`、以及一段注释密度最高的 RDP 简化
@@ -16,7 +17,7 @@ claims: [WW-1, WW-2, WW-3, WW-4, WW-5, WW-6]
 > `src/private/animated/NativeAnimatedValidation.js`、
 > `Libraries/Animated/nodes/AnimatedStyle.js:238-250`
 >
-> **基线**：react-native @ `9b131e42` · JS 层 · **native animated 路径**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · JS 层 · **native animated 路径**
 >
 > **前置**：[51 文档](./51-动画系统的驱动驻留与批次复位.md) 记录动画的原生侧
 > （驱动驻留、批次复位、无上界回调表）；

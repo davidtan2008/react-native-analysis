@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [cross]
 layer: T3
 symbols: ["RCTDeviceInfo", "RCTAccessibilityManager"]
+sourceRoot: react-native
 claims: []
 ---
 # 29 · iOS 平台能力族：DeviceInfo / Accessibility / Appearance 的生命周期严谨性
 
 > **模块**：C1 · `CoreModules/` 的平台能力族（13 文件 / 2364 行）
-> **基线**：react-native @ `9b131e42` · iOS 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · iOS 侧
 > **前置**：[23 文档 §6.3](./23-iOS基础工具层ConvertAssertLogUtils.md) 记录了
 > `RCTKeyWindow()` 返回 nil 会导致「RN UI 根本不渲染」；
 > [28 文档](./28-iOS-Dev工具链与四层门控.md) 记录了 Dev 工具链的四层门控。

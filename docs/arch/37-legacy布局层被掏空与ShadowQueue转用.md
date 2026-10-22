@@ -7,6 +7,7 @@ platforms: [ios]
 architecture: [legacy]
 layer: T1
 symbols: ["RCTShadowView", "RCTUIManager"]
+sourceRoot: react-native
 claims: [BB-1, BB-2, BB-3, BB-4, BB-5, BB-6, BB-7, BB-8, BB-9, BB-10, BB-11]
 ---
 # 37 · legacy 布局层被整体掏空：UIManager / ShadowView / RCTLayout 与 ShadowQueue 的转用
@@ -14,7 +15,7 @@ claims: [BB-1, BB-2, BB-3, BB-4, BB-5, BB-6, BB-7, BB-8, BB-9, BB-10, BB-11]
 > **模块**：C1 · `React/Modules/RCTUIManager.mm` + `React/Views/RCTShadowView.*`
 > / `RCTShadowView+Layout.*` / `RCTLayout.*` / `RCTUIManagerUtils.*`
 > / `RCTUIManagerObserverCoordinator.*` / `React/Base/Surface/RCTSurfaceRootShadowView.*`
-> **基线**：react-native @ `9b131e42` · legacy（Paper）架构
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · legacy（Paper）架构
 > **前置**：[25 文档](./25-iOS桥接核心与启动性能标签.md) 记录了 `RCTModuleData`
 > 被清空为 3 个空方法的无 ivar 空壳、`RCTBridge` 的 4 个 reload 方法空实现；
 > [36 文档](./36-legacy-View层ComponentData与hitTest.md) 记录了 legacy 侧

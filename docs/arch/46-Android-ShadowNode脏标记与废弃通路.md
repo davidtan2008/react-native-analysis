@@ -7,6 +7,7 @@ platforms: [android]
 architecture: [cross]
 layer: T1
 symbols: ["ShadowNode", "markDirty"]
+sourceRoot: react-native
 claims: [KK-1, KK-2, KK-3, KK-4, KK-5, KK-6, KK-7]
 ---
 # 46 · Android legacy ShadowNode 的脏标记、布局去重，与一条走到底就断掉的数据通路
@@ -17,7 +18,7 @@ claims: [KK-1, KK-2, KK-3, KK-4, KK-5, KK-6, KK-7]
 > `views/textinput/ReactTextInputLocalData.kt`（33）、
 > `uimanager/UIManagerModule.kt:274`
 >
-> **基线**：react-native @ `9b131e42` · Android 侧 · **legacy 架构（Paper）路径**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧 · **legacy 架构（Paper）路径**
 >
 > **前置**：[37 文档](./37-legacy布局层被掏空与ShadowQueue转用.md) 结论
 > 「legacy 布局层被掏空」；[45 文档](./45-Android-ViewManager属性缓存与回收契约.md) 记录

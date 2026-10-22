@@ -7,12 +7,13 @@ platforms: [ios]
 architecture: [legacy]
 layer: T1
 symbols: ["RCTComponentData", "RCTHitTest"]
+sourceRoot: react-native
 claims: [AA-1, AA-2, AA-3, AA-4]
 ---
 # 36 · legacy 架构的 View 层：ComponentData 的 prop 装配与 RCTView 的 hitTest
 
 > **模块**：C1 · `React/Views/` 的核心族（15 文件 / 4682 行）
-> **基线**：react-native @ `9b131e42` · legacy 架构（Paper）
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · legacy 架构（Paper）
 > **前置**：[25 文档](./25-iOS桥接核心与启动性能标签.md) 记录了 `React/Base/RCTModuleData`
 > 被清空为无 ivar 的空壳；[31 文档](./31-Fabric组件层View与回收池.md) 记录了 Fabric 侧的 View。
 >

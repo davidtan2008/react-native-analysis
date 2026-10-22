@@ -7,12 +7,13 @@ platforms: [android]
 architecture: [cross]
 layer: T3
 symbols: ["JNI_OnLoad", "JavaExceptionTranslator"]
+sourceRoot: react-native
 claims: [JNI-1, JNI-2, JNI-3, JNI-4, JNI-5, JNI-6, JNI-7]
 ---
 # 18 · Android JNI 胶水层：异常穿透的两个方向
 
 > **模块**：C3（`ReactAndroid/src/main/jni`，176 个非测试文件）
-> **基线**：react-native @ `9b131e42` · Android 侧
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · Android 侧
 > **前置**：[04 文档](./04-崩溃日志捕获收集处理上传.md) 给了崩溃链路全貌；[11 文档](./11-运行时与错误桥.md) 讲了 C++ 侧 `JsErrorHandler`。
 > 本文补上**链路中最容易被误解的一环**：C++ 与 Java 之间的异常如何互相穿透，
 > 以及**哪一步会真的 abort 进程**。

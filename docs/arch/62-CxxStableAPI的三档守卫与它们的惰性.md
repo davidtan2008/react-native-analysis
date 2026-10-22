@@ -7,13 +7,14 @@ platforms: [cross]
 architecture: [cross]
 layer: T4
 symbols: ["UmbrellaGuard", "RN_STRICT_API"]
+sourceRoot: react-native
 claims: [BBB-1, BBB-2, BBB-3, BBB-4, BBB-8, BBB-9, BBB-10]
 ---
 # 62 · CxxStableAPI 的三档守卫：631 处 include、一个全仓未定义的宏、以及本仓库注释质量的第一档样本
 
 > **模块**：Z1 · `packages/react-native/ReactCommon/react/cxxstableapi/`（6 个非测试文件）
 >
-> **基线**：react-native @ `9b131e42` · 双端 C++（预处理器层）· **与架构无关**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · 双端 C++（预处理器层）· **与架构无关**
 >
 > **前置**：[49 文档](./49-构建工具链与静默失败.md) 记录构建门禁的方向性问题与外部引用的可验证形态；
 > [59 文档](./59-Promise的reject跨平台契约.md) 记录「符号级」锚点失效（对方改名）；

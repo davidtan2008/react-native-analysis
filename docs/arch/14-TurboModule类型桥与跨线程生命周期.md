@@ -7,6 +7,7 @@ platforms: [cross]
 architecture: [cross]
 layer: T2
 symbols: ["TurboModule", "MethodMetadata", "JsiTurboModule"]
+sourceRoot: react-native
 claims: [BRG-1, BRG-2, BRG-3, BRG-4, BRG-5, BRG-6, BRG-7]
 ---
 # 14 · TurboModule 类型桥：react/bridging 模板体系与跨线程生命周期
@@ -14,7 +15,7 @@ claims: [BRG-1, BRG-2, BRG-3, BRG-4, BRG-5, BRG-6, BRG-7]
 > **模块**：B1（`ReactCommon/react/nativemodule` + `react/bridging` + `specs_DEPRECATED` + `react-native-codegen/src`，共 233 个非测试文件）
 > **本文范围**：`react/bridging` 的 19 个 `.h` + 1 个 `.cpp`，以及 `nativemodule/core/ReactCommon` 的绑定注入点。
 > B1 其余部分（`codegen/src` 的 89 个 parser/generator、`specs_DEPRECATED` 的 49 个 JS spec）**未读**。
-> **基线**：react-native @ `9b131e42`
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根）
 > **前置**：[11 文档](./11-运行时与错误桥.md) 讲了 `ReactInstance` 的运行时初始化。
 > 本文讲 TurboModule 最核心也最容易出错的一层：**C++ 类型 ⇄ JSI 值的编译期转换，
 > 以及回调跨线程时 JS 对象如何不被提前释放**。

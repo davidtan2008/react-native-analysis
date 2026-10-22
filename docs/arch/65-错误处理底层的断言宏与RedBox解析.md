@@ -7,6 +7,7 @@ platforms: [cross]
 architecture: [cross]
 layer: T1
 symbols: ["react_native_assert", "react_native_expect", "RedBoxErrorParser", "JscSafeUrl", "StackTraceParser"]
+sourceRoot: react-native
 claims: [EEE-1, EEE-1b, EEE-2, EEE-3, EEE-4, EEE-5, EEE-6, EEE-7]
 ---
 # 65 · 错误处理的 C++ 底层：assert 宏的平台不对称、同模块两套数字解析策略、RedBox URL 还原的三个往返损坏
@@ -14,7 +15,7 @@ claims: [EEE-1, EEE-1b, EEE-2, EEE-3, EEE-4, EEE-5, EEE-6, EEE-7]
 > **模块**：A4 · `packages/react-native/ReactCommon/react/debug/`（11 文件）
 > + `packages/react-native/ReactCommon/jserrorhandler/`（6 文件）+ `Libraries/LogBox/`（JS 侧）
 >
-> **基线**：react-native @ `9b131e42` · 双端 C++ · **与架构无关**
+> **基线**：react-native @ `9b131e42`（submodule `react-native/`，本文路径基准 = 该 submodule 根） · 双端 C++ · **与架构无关**
 >
 > **前置**：[04 文档](./04-崩溃日志捕获收集处理上传.md) 记录崩溃采集与上传全链路；
 > [22 文档](./22-iOS崩溃UI层RedBox与LogBox.md) 记录 iOS RedBox/LogBox 双层门控；
