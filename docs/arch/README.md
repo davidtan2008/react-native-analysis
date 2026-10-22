@@ -6,13 +6,13 @@
 
 ## 检索入口
 
-> **本目录 78 篇文档按「主题 → 症状 → 结论 → 符号」四条路径组织，全部索引由脚本生成，禁止手写。**
+> **本目录 79 篇文档按「主题 → 症状 → 结论 → 符号」四条路径组织，全部索引由脚本生成，禁止手写。**
 
 | 入口 | 用途 | 从哪开始 |
 | --- | --- | --- |
 | **[00 · 主题地图](./INDEX/00-主题地图.md)** | **按主题域/子主题浏览** —— 8 个主题域、37 个子主题，每个子主题下列出覆盖它的文档、涉及的现象、平台与关键结论数量 | 「我要搞懂某个子系统」 |
 | **[01 · 症状排查手册](./INDEX/01-症状排查手册.md)** | **按现象排查** —— 17 类症状（崩溃/白屏/OOM/泄漏/启动变慢/卡顿/内容增长过快/布局/手势/动画/文本/桥接/属性/构建/调试/无障碍），每类列出相关文档与结论编号 | 「我遇到了某个问题」 |
-| **[02 · 结论速查表](./INDEX/02-结论速查表.md)** | **按结论编号直达** —— 全部 **518 条**编号结论（`ZZ-1` / `AAA-1` / `BBB-2` / `CCC-15` …）的摘要、源码位置与所属文档 | 「我记得有个结论编号」 |
+| **[02 · 结论速查表](./INDEX/02-结论速查表.md)** | **按结论编号直达** —— 全部 **539 条**编号结论（`ZZ-1` / `AAA-1` / `BBB-2` / `CCC-15` …）的摘要、源码位置与所属文档 | 「我记得有个结论编号」 |
 | **[03 · 符号与源码入口](./INDEX/03-符号与源码入口.md)** | **按符号/模块目录检索** —— 关键类与函数 → 讲解它的文档；模块 → 已读/缺口/文档 | 「我知道源码里的某个类」 |
 
 **每篇文档的 front-matter**（`topic` / `symptoms` / `symbols` / `claims` / `platforms` / `architecture` / `layer`）
@@ -103,6 +103,7 @@
 | [76-CLI工具层的四个缺陷与legacy桥的契约偏差.md](./76-CLI工具层的四个缺陷与legacy桥的契约偏差.md) | **【CLI-1 核心】`assemble` 构造了 `-PhermesEnabled` / `-PnewArchEnabled` 却把 `gradleArgs` 传给 `gradle()`** —— `args` 是从未被使用的局部变量；**同文件 8 行逐字相同、只差最后一个参数**（`build` 传对了）→ 复制粘贴缺陷，**不崩不报错、只是静默不生效**；**【CLI-2 核心】缓存清理扫的是 `path.dirname(directory)`** —— 实测 `os.tmpdir()='/tmp'` → `dirname` 为 `/`，**Metro/Haste/RN 三个缓存清理扫的是文件系统根目录**：真缓存在 `/tmp` 里删不掉，反而可能误删根目录同名条目；**【CLI-3 核心】`fs.rm` 不带 callback** → 实测返回 `undefined`（不是 Promise）并**异步抛未捕获 `TypeError`** → **清理越成功越崩溃**，且 `await` 捕获不到 | **【CLI-4 核心】`-o ${options.outputSourceMap}` 被拼成单个 argv** → `compose-source-maps.js` 严格比对 `argv[i]==='-o'`，实测 `outputPath` 恒 `undefined` → **合成后的 source map 从不写出**，而 `finally` 仍会删掉两份中间 map；**【CLI-5 核心】`require.resolve` 用了 `{cwd:[...]}`** —— Node 只认 `paths`，受控实验证明该选项被静默忽略，**全仓其它 4 处都用 `{paths}`**；且该函数有**两份逐字副本**（与 67 文档 GGG-1 同型）；**【CLI-6】`execa` 在全仓任何 `package.json` 里都未声明**，只作为 `@react-native-community/cli*` 的传递依赖存在；**【CLI-7】`isOnPath` 的 `exitCode === 0` 是死判定** —— execa 5.1.1 实测非零退出**抛异常**，「找不到」完全由 `catch` 决定 | **【CLI-8】`version.js` 的注释指向不存在的入口**（`versions.js` vs `version.js`，包名还少个 `s`）；**【CLI-9】发布的 `NODE_JS: '>= 18'` 比自身 `engines`（≥22.13）更宽松**；**【CLI-10】`checkPodfileInSyncWithManifest` 在 `try` 内自抛自捕** → 两条命令提示互相矛盾；**【CLI-12 核心】iOS 侧 `NSDataBigString::isAscii()` 恒 `false`** —— **补上 71 文档 KKK-1 缺失的平台维度**（Android 恒 `true` / iOS 恒 `false`，四个实现全是写死的常量，两端方向相反）；**【CLI-13】`size()` 违反基类「不含 NUL」契约**（多 1），null 结尾的前置条件只写在注释里、无校验；**【CLI-14 核心】`runSync` 用 `DISPATCH_TIME_FOREVER` 无界等待**，其前置条件只在析构 `RCTAssert` 里检查 → 与 69 文档 III-1 并列的**第三种并发形态：既无锁也无超时**；**4 处正面样本**（`assertDependencies` 的错误信息带依赖用途、默认执行器契约三分支写清、`Task.order` 被 rn-tester 真实消费、析构断言把契约做成可执行检查） |
 | [77-测试工具层的静默失效与内部构建边界.md](./77-测试工具层的静默失效与内部构建边界.md) | **【TST-1 核心】`shuffle(T array)` 按值传参** —— 注释写「Shuffles `std::vector` **in place**」而实现打乱的是**副本** → `messWithChildren` 的「随机打乱子节点顺序」**从未生效**（注释承诺的行为不存在）；**【TST-2 核心】`random<T>()` 无参重载返回 `bool`**（与一参/二参重载返回 `T` 不一致）→ `entropy.random<int>()` **只会得到 0 或 1** → `zIndex` 的随机化实际只有两个取值；**【TST-5 核心】`findRandomShadowNode` 的区间基于「count 含根节点」的误解** —— 实际 count **不含**根、后代索引 0 基 → 区间上界本就漏一个，且 **count ≤ 1 时 `uniform_int_distribution<int>(1, 0)` 的 min > max（标准规定为 UB）**；**【TST-14 核心】`ShimRCTInstance.reset` 会把 swizzle 撤销** —— `method_exchangeImplementations` 是**对合**的，再交换一次即还原 → **reset 之后 shim 不再拦截**，而计数归零看起来像成功；**【TST-12 核心】`MockClock::time_` 在两个 TU 里各定义一次**（同一二进制内即重复定义）且 `MockClock` 在**全局命名空间**、无 reset；**【TST-13 核心】`MockSurfaceHandler` 的 `getSurfaceId` mock 无效** —— 基类的 `getSurfaceId()` **不是 virtual**（gmock 生成的是遮蔽而非 override）→ 通过基类指针调用走真实实现；且**该头文件全仓零引用** | **TST-6** `alterations` 为空时构造 `uniform_int_distribution<int>(0, -1)` → UB + 越界访问；**TST-7** `traverseShadowTree` 是**无深度限制递归**（与 64 文档 DDD-2 同型）；**TST-8** `generateReactTag()` 的计数器是头文件里的函数内 static → **每个 TU 一份、都从 1000 开始** → 跨 TU 会撞 `Tag`；**TST-9** 索引越界时**静默返回 `shadowNode == nullptr` 的空边** → 调用方立刻空指针解引用；**TST-10** `const_cast` 去掉 `ViewProps` 的 const → 绕过 props 不可变性契约；**TST-15** `weakShim` 是**全局 `__weak`** → 释放后计数**静默停止更新**（与 66 文档 FFF-2 同型）；**TST-16** swizzle 无空指针检查 + `class_getInstanceMethod` **沿继承链查找**（可能交换到父类）+ **无还原函数**；**TST-17** `objc_autoreleasePoolPush/Pop` 由本仓库**自己 `OBJC_EXPORT` 声明**（说明不在公开头文件里）+ `assert` 在 Release 下失效 → `objc_autoreleasePoolPop(NULL)`；**TST-18 本目录在 OSS 的任何构建文件里零引用** → **不影响 OSS 产物**，但 TST-1/2/5/14 **直接削弱内部测试的覆盖强度**；**3 处正面样本**（属性清单长度被断言锁死且注释说明缘由、`messWithLayoutableOnlyFlag` 的字段扰动覆盖面、`RCTCxxBridgeDelegate` 式的契约三分支写法） |
 | [78-构建期的静态检查与转译层.md](./78-构建期的静态检查与转译层.md) | **【LNT-1 核心】同一份 `shared.js` 在两种配置格式下作用于不同的文件集合** —— `eslint-config-react-native/index.js` 的**前四个** override 的 `files` 全是 `*.js` 形式（**无 `**/`**），而 `flat.js` 的对应 override 全是 `**/*.js` → 覆盖范围**相差一个数量级**，且 RN 自有规则 `@react-native/no-deep-imports` 正好挂在这个 override 上；**【LNT-2 核心】`shared.js` 第 173 行配置文本损坏** —— `: 1,` 被吞进行尾注释（还多一个孤立的 `"`）→ **语法完全合法、无任何报错，但某条规则从未生效**；**【LNT-14 核心】`lazy-imports.js` 与 `react-native/index.js` 严重脱节** —— 实测 **36 个导出缺失（其中 24 个稳定 API）、10 个死条目、`ReactNative` 重复两次**，而清单自称「Keep this list in sync」；**【LNT-19 核心】`getBabelRC` 的 memoization 不按 `projectRoot` 分键** → 同一进程处理第二个 root 时**拿到第一个 root 的配置**（含 preset 选项里的 `projectRoot`），缓存键同样不含 root | **【LNT-6 核心】ESLint 规则与 Babel 插件的 deep-import 判定不一致** —— ESLint 豁免 4 个二级入口 + `src/fb_internal/`，Babel **一个都不豁免** → 同一个导入**静态检查放行、构建期却打警告**；且 `react-native` 的 `exports` 放行了 10 余条路径，**两份判定都没覆盖**；**LNT-3** 依赖 4 条 ESLint v9 计划移除的格式类规则（当前 `^8.57.0` 仍可用，升级即加载失败）；**LNT-5** `no-deep-imports` 级别是 `1`（warn）；**LNT-7** Babel 缺 `ExportAllDeclaration`；**LNT-8** `DynamicColorIOS` 用 `forEach` → 多属性出错时重复报同一位置；**LNT-11** `prepack`/`postpack` 的精确字符串替换**静默失效**（发布包会去 require 不存在的 `codegen/src/`）；**LNT-12** 编译缓存以**毫秒级 mtime`** 为键且污染 Babel 返回对象；**LNT-13** `__test_fixtures__` 的 430 行夹具**被计入覆盖范围**；**LNT-15** `Platform.select({})` 被替换成标识符 `undefined`；**LNT-20** 非 dev 时 `BABEL_ENV` 优先于 `'production'`；**LNT-21** `parseFile` 用 `endsWith('js')` → `.mjs`/`.cjs` 被当 Flow 解析；**6 处正面样本**（`globals` 的双格式兼容、`disk-cache` 的三类错误分级降级、`getCacheKey` 的版本分支与惰性加载、`passthrough-syntax-plugins` 的双重用途说明、`inline-platform-plugin` 的 provenance 三态与写目标保护、`isGeneratedFile` 刻意拼接以避开扫描） |
+| [79-JS与Native边界的类型兼容性检查器.md](./79-JS与Native边界的类型兼容性检查器.md) | **【CMP-1】`changedParams` 是死错误码** —— 参数个数变化实际走 `length-mismatch` → `incompatibleTypes`；**【CMP-2】`indexers` 完全未参与比较** —— `{[a: string]: ?number}` 与 `?string` 判为 `matching`，配套夹具 `MapWithKey`/`MapWithKey2` 零测试引用；**【CMP-3】属性级 `?T` 变化被折叠成「可选性」变化** —— 报 `optionalProps`（"Property made optional"）而非 `nullableOfNonNull`，四个象限的**方向判定仍正确**，错的是错误码与文案；**【CMP-4】`madeStrict.furtherChange` 是死数据** —— `madeOptional` 有递归、`madeStrict` 没有，导致 `toNative` 下「属性变必填 + 嵌套变化」**一个错误都不报**；**【CMP-5】联合成员内部的变化被静默丢弃**（`//TODO` 自认）；两处已知失明（`Array<ObjA>` vs `Array<ObjB>`、`Object` vs `UnsafeObject`）各有测试**自认**；删除模块/组件被判为 `ok`（代码留 `TODO`）；三处「写了但到不了」（与事实相反的 `$FlowFixMe` 注释、恒真的 `!= null`、少一对括号的 `concat[`）|
 | [INDEX/](./INDEX/00-主题地图.md) | **检索索引（脚本生成）**：主题地图 / 症状排查手册 / 结论速查表 / 符号与源码入口 |
 | [audit/](./audit/) | 事实校验工具、模块覆盖清单与覆盖度分析（见下文「事实保证」） |
 
@@ -150,12 +151,12 @@ node docs/arch/audit/check-index.mjs       # 6) 索引体系：front-matter / �
 **当前状态（实测）：**
 
 ```
-引用 3140 条全部有效（2841 条带行号 + 299 条纯路径）
-代码块 1179 个 / 7936 行校验, 0 存疑
-文档间链接 533 条, 0 断链, 0 重复表格行
-核心事实断言 1612 条, 全部与源码一致
-索引  78 篇文档 / 8 个主题域 / 37 个子主题 / 17 类症状 / 518 条结论登记，0 问题
-已读 983 / 4176 个非测试代码文件（23.5%）
+引用 3291 条全部有效（2990 条带行号 + 301 条纯路径）
+代码块 1207 个 / 8181 行校验, 0 存疑
+文档间链接 536 条, 0 断链, 0 重复表格行
+核心事实断言 1636 条, 全部与源码一致
+索引  79 篇文档 / 8 个主题域 / 37 个子主题 / 17 类症状 / 539 条结论登记，0 问题
+已读 992 / 4176 个非测试代码文件（23.8%）
 ```
 
 > **重要**：前四项门禁只保证「引用的东西存在、贴的代码没造假」，
@@ -175,12 +176,12 @@ node docs/arch/audit/check-index.mjs       # 6) 索引体系：front-matter / �
 ```
 计入范围的代码文件:   4176   （已排除 785 个预编译/示例/类型声明/mock）
 manifest 声明覆盖:   4009   (96.0%)
-已读并被文档引用:      983   (23.5%)
-模块缺口:            3026
+已读并被文档引用:      992   (23.8%)
+模块缺口:            3017
 未被任何模块声明:      167   (4.0%)  → audit/unclaimed.json
 ```
 
-**恒等式校验**：`983 已读 + 3026 缺口 + 167 未声明 = 4176` ✅
+**恒等式校验**：`992 已读 + 3017 缺口 + 167 未声明 = 4176` ✅
 
 `status: done` 的严格含义是「**该目录下全部非测试文件都已读过且已成文**」，
 不是「这个主题写过」。`readFiles` 与 `fileCount` 的差值即为剩余缺口。
@@ -188,7 +189,7 @@ manifest 声明覆盖:   4009   (96.0%)
 ### 阅读计划（按优先级 + 前置依赖排序）
 
 完整计划见 [`audit/READ-PLAN.md`](./audit/READ-PLAN.md)，那里有 **37 个模块 × 缺口的逐项对账表**
-（合计 3026 = 实测值）。批次概览：
+（合计 3017 = 实测值）。批次概览：
 
 | 批次 | 主题 | 模块数 | 缺口 | 前置 |
 | --- | --- | --- | --- | --- |

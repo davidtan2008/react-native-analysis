@@ -12821,6 +12821,223 @@ addDocClaim('D217', '文档给出了哈希契约违反在 AttributedString 一�
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// 79 文档 · JS/Native 边界的类型兼容性检查器（compatibility-check）
+//   CMP-1 … CMP-21
+// ────────────────────────────────────────────────────────────────────────
+{
+  const CC = 'packages/react-native-compatibility-check/src';
+  const read = f => fs.readFileSync(path.join(REPO, CC, f), 'utf8');
+  const srcFiles = [
+    'TypeDiffing.js',
+    'VersionDiffing.js',
+    'ErrorFormatting.js',
+    'SortTypeAnnotations.js',
+    'ComparisonResult.js',
+    'DiffResults.js',
+    'convertPropToBasicTypes.js',
+    'index.js',
+    'index.flow.js',
+  ];
+  const src = srcFiles.map(read).join('\n');
+  const cmpType = read('TypeDiffing.js');
+  const cmpVersion = read('VersionDiffing.js');
+  const cmpFormat = read('ErrorFormatting.js');
+  const cmpSort = read('SortTypeAnnotations.js');
+  const cmpDiff = read('DiffResults.js');
+  const cmpConvert = read('convertPropToBasicTypes.js');
+  const cmpIndex = read('index.js');
+  const countOf = (haystack, needle) => haystack.split(needle).length - 1;
+
+  // ── CMP-1：changedParams 是死错误码 ──
+  add('C634', 'CMP-1 核心：DiffResults.js 的 ErrorCode 联合声明了 changedParams，但该字符串在全包 src 里只出现 1 次（就是声明本身），没有任何生产/消费/测试引用；参数个数变化实际走 fixedLength 的 length-mismatch → error → incompatibleTypes',
+    'changedParams 全包仅 1 次出现',
+    '全包:' + countOf(src, "'changedParams'") + ' / DiffResults:' + countOf(cmpDiff, "'changedParams'") +
+      ' / fixedLength:' + cmpType.includes('true, // fixedLength') +
+      ' / length-mismatch 分支:' + cmpType.includes("case 'length-mismatch':"),
+    countOf(src, "'changedParams'") === 1 &&
+      countOf(cmpDiff, "'changedParams'") === 1 &&
+      cmpType.includes('true, // fixedOrder') &&
+      cmpType.includes('true, // fixedLength') &&
+      cmpType.includes("case 'length-mismatch':") &&
+      cmpType.includes('Function types have differing length of arguments') &&
+      cmpVersion.includes("errorCode: 'incompatibleTypes',"));
+
+  // ── CMP-2：indexers 零处理 ──
+  add('C635', 'CMP-2 核心：ObjectTypeAnnotation 分支只把 properties 传给 compareObjectTypes，indexers / callProperties / internalSlots 全部丢弃；字符串 indexers 在整个 compatibility-check src 下出现 0 次 —— 索引器值类型变化被判为 matching',
+    'indexers 出现 0 次 + 只传 properties',
+    'indexers:' + countOf(src, 'indexers') +
+      ' / 只传 properties:' + cmpType.includes('return compareObjectTypes(\n        newerAnnotation.properties,\n        olderAnnotation.properties,\n      );'),
+    countOf(src, 'indexers') === 0 &&
+      cmpType.includes('case \'ObjectTypeAnnotation\':') &&
+      cmpType.includes('newerAnnotation.properties,') &&
+      cmpType.includes('olderAnnotation.properties,') &&
+      !cmpType.includes('newerAnnotation.indexers') &&
+      !cmpType.includes('olderAnnotation.indexers') &&
+      cmpType.includes('if (sortedOlderTypes.length === 0) {') &&
+      cmpType.includes('if (isPropertyLogEmpty(result)) {'));
+
+  // ── CMP-3：属性级 nullable 折叠成 optionality ──
+  add('C636', 'CMP-3 核心：comparePropertyArrays 遇到 nullableChange 时调用 checkOptionalityChanges(newerName, !optionsReduced, optionsReduced, result)，把 nullableLog 丢掉 —— 属性级 ?T 变化被记成 madeOptional/madeStrict，报 optionalProps 而不是 nullableOfNonNull',
+    'nullableChange → checkOptionalityChanges + nullableLog 丢弃',
+    '折叠:' + /case 'nullableChange':\n\s+return checkOptionalityChanges\(/.test(cmpType) +
+      ' / 四象限注释:' + cmpType.includes('void goes to T?   :: typeRefined !optionsReduced') +
+      ' / 文案:' + cmpVersion.includes("'Property made optional, but native requires it'"),
+    /case 'nullableChange':\n\s+return checkOptionalityChanges\(/.test(cmpType) &&
+      cmpType.includes('!comparedTypes.nullableLog.optionsReduced,') &&
+      cmpType.includes('comparedTypes.nullableLog.optionsReduced,') &&
+      fs.readFileSync(path.join(REPO, CC, 'ComparisonResult.js'), 'utf8').includes('Four possible cases of change') &&
+      cmpVersion.includes("errorCode: 'optionalProps',") &&
+      cmpVersion.includes("errorCode: 'requiredProps',"));
+
+  // ── CMP-4：madeStrict.furtherChange 是死数据 ──
+  add('C637', 'CMP-4 核心：TypeDiffing 的 updateMadeStrict 采集 furtherChange，但 VersionDiffing 的 nestedPropertiesCheck 只对 propertyLog.madeOptional 递归 furtherChange；madeStrict 在 VersionDiffing 里只被 checkForUnSafeMadeStrictProperties 读取属性名，furtherChange 无任何消费者',
+    'madeStrict 的 furtherChange 无消费者',
+    'VD madeStrict:' + countOf(cmpVersion, 'madeStrict') + ' / VD furtherChange:' + countOf(cmpVersion, 'furtherChange') +
+      ' / 只有 madeOptional 过滤:' + cmpVersion.includes('result.propertyLog.madeOptional.filter('),
+    cmpType.includes('result.madeStrict.push({property: name, furtherChange});') &&
+      cmpVersion.includes('result.propertyLog.madeOptional.filter(') &&
+      !cmpVersion.includes('propertyLog.madeStrict.filter') &&
+      !cmpVersion.includes('madeStrict.flatMap') &&
+      countOf(cmpVersion, 'madeStrict') === 3);
+
+  // ── CMP-5：联合成员内部变化静默丢弃 ──
+  add('C638', 'CMP-5 核心：compareUnionTypes 的成员比较里 nullableChange / functionChange / positionalTypeChange / members 全部 break（代码带 //TODO: Handle the nullable changes within Union），properties 被记成同时 addedMembers + missingMembers',
+    'TODO + 四个 status 直接 break',
+    'TODO:' + cmpType.includes('//TODO: Handle the nullable changes within Union') +
+      ' / addedMembers:' + cmpType.includes('restComparison.addedMembers.push(newerHead);') +
+      ' / missingMembers:' + cmpType.includes('restComparison.missingMembers.push(olderHead);'),
+    cmpType.includes('//TODO: Handle the nullable changes within Union') &&
+      /case 'nullableChange':\n      case 'functionChange':\n      case 'positionalTypeChange':\n      case 'members':\n        break;/.test(cmpType) &&
+      cmpType.includes('restComparison.addedMembers.push(newerHead);') &&
+      cmpType.includes('restComparison.missingMembers.push(olderHead);'));
+
+  // ── CMP-6 / CMP-7：两处已知失明 ──
+  add('C639', 'CMP-6 / CMP-7：TypeDiffing-test 里存在自认用例名 "does not error (but it should) on arrays of two different objects" 与 "matches objects with unsafe objects"；机制上 Array<别名对象> 退化成 Array<mixed>，Object 与 CodegenTypes.UnsafeObject 都成为 GenericObjectTypeAnnotation 且 dictionaryValueType 均为 null → 立即 matching',
+    '两处用例名 + genericObject 的 null/null 短路',
+    'but it should:' + fs.readFileSync(path.join(REPO, 'packages/react-native-compatibility-check/src/__tests__/TypeDiffing-test.js'), 'utf8').includes('does not error (but it should) on arrays of two different objects') +
+      ' / unsafe objects:' + fs.readFileSync(path.join(REPO, 'packages/react-native-compatibility-check/src/__tests__/TypeDiffing-test.js'), 'utf8').includes('matches objects with unsafe objects') +
+      ' / 短路:' + cmpType.includes('if (\n    newerType.dictionaryValueType == null &&\n    olderType.dictionaryValueType == null\n  ) {\n    return {status: \'matching\'};'),
+    fs.readFileSync(path.join(REPO, 'packages/react-native-compatibility-check/src/__tests__/TypeDiffing-test.js'), 'utf8').includes('does not error (but it should) on arrays of two different objects') &&
+      fs.readFileSync(path.join(REPO, 'packages/react-native-compatibility-check/src/__tests__/TypeDiffing-test.js'), 'utf8').includes('matches objects with unsafe objects') &&
+      cmpType.includes('if (\n    newerType.dictionaryValueType == null &&\n    olderType.dictionaryValueType == null\n  ) {\n    return {status: \'matching\'};') &&
+      cmpType.includes("case 'MixedTypeAnnotation':"));
+
+  // ── CMP-8：删除模块/组件被判 ok ──
+  add('C640', 'CMP-8：summarizeSchemaDiff 对 deprecated 返回 {status: "ok"} 并留注释 // TODO add check that a component can be removed；对 new 返回 patchable',
+    'deprecated → ok + TODO',
+    'TODO:' + cmpVersion.includes('// TODO add check that a component can be removed') +
+      ' / new→patchable:' + cmpVersion.includes("case 'new':\n      return {status: 'patchable', incompatibilityReport: {}};"),
+    cmpVersion.includes('// TODO add check that a component can be removed') &&
+      cmpVersion.includes("case 'deprecated':") &&
+      cmpVersion.includes("return {status: 'ok', incompatibilityReport: {}};") &&
+      cmpVersion.includes("status: 'deprecated',"));
+
+  // ── CMP-11：模块级注册表无 try/finally ──
+  add('C641', 'CMP-11：compareTypes 把四个注册表写进模块级变量、调用 compareTypeAnnotation、再手工清空；TypeDiffing.js 全文没有 try/catch —— 比较器抛错或 :76-79 提前返回都会留下上一轮的注册表',
+    '无 try/catch + 手工清空',
+    'try:' + countOf(cmpType, 'try {') + ' / catch:' + countOf(cmpType, 'catch') +
+      ' / finally:' + countOf(cmpType, 'finally'),
+    countOf(cmpType, 'try {') === 0 &&
+      countOf(cmpType, 'catch') === 0 &&
+      countOf(cmpType, 'finally') === 0 &&
+      cmpType.includes('_newerTypesReg = newerTypesReg;') &&
+      cmpType.includes('_newerTypesReg = undefined;') &&
+      /if \(!olderType\) \{\n    \/\/ No matching olderType for newerType, skip the Comparison\.\n    return \{status: 'skipped'\};\n  \}/.test(cmpType));
+
+  // ── CMP-12：hasUpdatesTypes 死导出 ──
+  add('C642', 'CMP-12：VersionDiffing 导出 hasUpdatesTypes 与 hasCodegenUpdatesTypes，两函数体逐字相同（四个 size > 0 判据）；hasUpdatesTypes 在全文件只出现 1 次（定义），调用 0 次',
+    '同体 + hasUpdatesTypes 仅定义',
+    '出现:' + countOf(cmpVersion, 'hasUpdatesTypes') + ' / 被调用:' + countOf(cmpVersion, 'hasUpdatesTypes(typeUpdate)') +
+      ' / 同体:' + countOf(cmpVersion, 'export function hasUpdatesTypes(diff: DiffSet): boolean {\n  return (\n    diff.newTypes.size > 0 ||'),
+    countOf(cmpVersion, 'hasUpdatesTypes') === 1 &&
+      countOf(cmpVersion, 'hasUpdatesTypes(typeUpdate)') === 0 &&
+      countOf(cmpVersion, 'export function hasUpdatesTypes(diff: DiffSet): boolean {\n  return (\n    diff.newTypes.size > 0 ||') === 1 &&
+      countOf(cmpVersion, 'export function hasCodegenUpdatesTypes(diff: DiffSet): boolean {\n  return (\n    diff.newTypes.size > 0 ||') === 1 &&
+      countOf(cmpVersion, 'hasCodegenUpdatesTypes(typeUpdate)') === 2);
+
+  // ── CMP-13：concat[ 笔误 ──
+  add('C643', 'CMP-13：TypeDiffing 的乱序数组比较里写的是 nestedChanges.concat[[oldTypePosn, newTypePosn, currentResult]] —— 少一对括号，实际是对 concat 函数做下标访问，恒得 undefined；注释自认 "It returns undefined and has existed since the day it was written"',
+    'concat[ 存在且注释自认',
+    '笔误:' + cmpType.includes('nestedChanges.concat[[oldTypePosn, newTypePosn, currentResult]]') +
+      ' / 注释:' + cmpType.includes('It returns `undefined`'),
+    cmpType.includes('nestedChanges.concat[[oldTypePosn, newTypePosn, currentResult]]') &&
+      cmpType.includes('It returns `undefined`') &&
+      !cmpType.includes('nestedChanges.concat([[oldTypePosn, newTypePosn, currentResult]])'));
+
+  // ── CMP-9 / CMP-10：格式化层的两处失真 ──
+  add('C644', 'CMP-9 / CMP-10：formatDiffSet 在 ok/patchable 分支带注释 "I don\'t think we can ever get in this branch"，而 index.js 的 getErrors 无条件调用它；formatNativeSpecErrorStore 用 changeInformation?.incompatibleChanges != null 判空，但该字段类型是 Set<ErrorStore>，恒真',
+    'FlowFixMe 注释 + 恒真判空',
+    '注释:' + cmpFormat.includes("I don't think we can ever get in this branch") +
+      ' / 无条件调用:' + cmpIndex.includes('return formatDiffSet(this.getSummary());') +
+      ' / 恒真:' + cmpFormat.includes('specError.changeInformation?.incompatibleChanges != null') +
+      ' / 类型是 Set:' + cmpDiff.includes('incompatibleChanges: Set<ErrorStore>,'),
+    cmpFormat.includes("if (summaryStatus === 'ok' || summaryStatus === 'patchable') {") &&
+      cmpFormat.includes("I don't think we can ever get in this branch") &&
+      cmpIndex.includes('return formatDiffSet(this.getSummary());') &&
+      cmpFormat.includes('specError.changeInformation?.incompatibleChanges != null') &&
+      cmpDiff.includes('incompatibleChanges: Set<ErrorStore>,'));
+
+  // ── CMP-17：toNative 链没有「新增必填属性」检查 ──
+  add('C645', 'CMP-17：checksForTypesFlowingToNative 的五个检查里没有 checkForUnsafeAddedProperties（该函数只出现在 fromNative 链）—— AGENTS.md 规则表声称 toNative 新增必填属性不安全，代码里没有对应检查',
+    'toNative 链不含 checkForUnsafeAddedProperties',
+    'toNative 链内:' + countOf(cmpVersion.slice(cmpVersion.indexOf('const checksForTypesFlowingToNative'), cmpVersion.indexOf('const checksForTypesFlowingFromNative')), 'checkForUnsafeAddedProperties') +
+      ' / fromNative 链内:' + countOf(cmpVersion.slice(cmpVersion.indexOf('const checksForTypesFlowingFromNative'), cmpVersion.indexOf('export function assessComparisonResult')), 'checkForUnsafeAddedProperties'),
+    countOf(cmpVersion.slice(cmpVersion.indexOf('const checksForTypesFlowingToNative'), cmpVersion.indexOf('const checksForTypesFlowingFromNative')), 'checkForUnsafeAddedProperties') === 0 &&
+      countOf(cmpVersion.slice(cmpVersion.indexOf('const checksForTypesFlowingFromNative'), cmpVersion.indexOf('export function assessComparisonResult')), 'checkForUnsafeAddedProperties') === 1 &&
+      path.join(REPO, 'packages/react-native-compatibility-check/AGENTS.md') &&
+      fs.readFileSync(path.join(REPO, 'packages/react-native-compatibility-check/AGENTS.md'), 'utf8').includes('| Add required property | ❌ |'));
+
+  // ── CMP-14 / CMP-15：两个分发器的失败方式与索引基准 ──
+  add('C646', 'CMP-14 / CMP-15：compareTypeAnnotation 对未知类型 throw，而 compareTypeAnnotationForSorting 的 default 返回 -1（对 A,B 与 B,A 都返回 -1，违反比较器约定）；数组元素索引在乱序路径是 0-based（sortTypeAnnotations 的 i），在定长定序路径写成 i + minLength + 1（1-based）',
+    'throw vs -1 + 1-based/0-based 并存',
+    'throw:' + cmpType.includes('throw new Error(`Unsupported type annotation: ${newerAnnotation.type}`);') +
+      ' / sort -1:' + cmpSort.includes('return -1;') +
+      ' / 0-based:' + cmpSort.includes('(a, i): [number, CompleteTypeAnnotation] => [i, a]') +
+      ' / 1-based:' + cmpType.includes('i + minLength + 1'),
+    cmpType.includes('throw new Error(`Unsupported type annotation: ${newerAnnotation.type}`);') &&
+      cmpSort.includes('default:\n      typeA.type as empty;\n      return -1;') &&
+      cmpSort.includes('(a, i): [number, CompleteTypeAnnotation] => [i, a]') &&
+      cmpType.includes('removedElements.push([i + minLength + 1, elements[i]]);') &&
+      cmpType.includes('addedElements.push([i + minLength + 1, elements[i]]);'));
+
+  // ── CMP-21：Int32Enum → Any ──
+  add('C647', 'CMP-21：convertPropToBasicTypes 把 Int32EnumTypeAnnotation 转成 AnyTypeAnnotation（注释自认不支持 NumberLiteralUnionTypeAnnotation），因此该 prop 的选项集合变化不可见；Int32Enum 只由 Component 解析器产生（flow/components/componentsUtils.js 与 typescript/components/componentsUtils.js）',
+    'Int32Enum → Any + 仅 Component 解析器产生',
+    '转换:' + cmpConvert.includes("case 'Int32EnumTypeAnnotation':") +
+      ' / 注释:' + cmpConvert.includes("// Compat check doesn't yet have support for") +
+      ' / 两处产生:' + (fs.readFileSync(path.join(REPO, 'packages/react-native-codegen/src/parsers/flow/components/componentsUtils.js'), 'utf8').includes("type: 'Int32EnumTypeAnnotation',") &&
+        fs.readFileSync(path.join(REPO, 'packages/react-native-codegen/src/parsers/typescript/components/componentsUtils.js'), 'utf8').includes("type: 'Int32EnumTypeAnnotation',")),
+    cmpConvert.includes("case 'Int32EnumTypeAnnotation':") &&
+      cmpConvert.includes("// Compat check doesn't yet have support for") &&
+      cmpConvert.includes("type: 'AnyTypeAnnotation',") &&
+      cmpConvert.includes("throw new Error('Unexpected type ' + inputType.type);") &&
+      fs.readFileSync(path.join(REPO, 'packages/react-native-codegen/src/parsers/flow/components/componentsUtils.js'), 'utf8').includes("type: 'Int32EnumTypeAnnotation',") &&
+      fs.readFileSync(path.join(REPO, 'packages/react-native-codegen/src/parsers/typescript/components/componentsUtils.js'), 'utf8').includes("type: 'Int32EnumTypeAnnotation',"));
+
+  // ── 文档侧 ──
+  addDocClaim('D257', '79 文档写明 changedParams 是死错误码',
+    /changedParams`?\s*是死错误码|死错误码/, {min: 1});
+  addDocClaim('D258', '79 文档写明 indexers 完全未参与比较',
+    /`indexers`\s*完全未参与比较|索引器/, {min: 1});
+  addDocClaim('D259', '79 文档写明属性级 nullable 变化被折叠成可选性',
+    /折叠成.{0,6}可选性|折叠成「可选性」/, {min: 1});
+  addDocClaim('D260', '79 文档写明 madeStrict.furtherChange 是死数据',
+    /madeStrict\.furtherChange`?\s*是死数据|furtherChange`?\s*是死数据/, {min: 1});
+  addDocClaim('D261', '79 文档写明删除模块/组件被判为 ok',
+    /删除模块\/组件被判为\s*`ok`|删除模块\/组件被当成\s*`ok`/, {min: 1});
+  addDocClaim('D262', '79 文档写明 Array<ObjA> 与 Object/UnsafeObject 两处失明',
+    /Array<ObjA>|UnsafeObject/, {min: 1});
+  addDocClaim('D263', '79 文档写明 hasUpdatesTypes 是死导出',
+    /hasUpdatesTypes`?\s*是死导出/, {min: 1});
+  addDocClaim('D264', '79 文档写明 AGENTS.md 规则表与代码不一致',
+    /AGENTS\.md`?\s*的.\{0,4\}兼容规则表与代码不一致|规则表与代码不一致/, {min: 1});
+  addDocClaim('D265', '79 文档写明 concat[ 少一对括号',
+    /concat\[`?\s*少一对括号|少一对括号/, {min: 1});
+  addDocClaim('D266', '79 文档写明 Int32Enum 被降级成 Any 导致选项变化不可见',
+    /Int32Enum`?\s*(prop\s*)?被降级成\s*`Any`|选项集合变化对整个工具不可见/, {min: 1});
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // 报告
 // ────────────────────────────────────────────────────────────────────────
 const fail = checks.filter(c => !c.ok);
