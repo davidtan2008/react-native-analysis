@@ -601,7 +601,7 @@
         "packages/babel-plugin-codegen"
       ],
       "fileCount": 188,
-      "readFiles": 103,
+      "readFiles": 114,
       "status": "partial",
       "docs": [
         "62",
@@ -612,10 +612,11 @@
         "76",
         "77",
         "78",
-        "79"
+        "79",
+        "80"
       ],
-      "note": "目录声明已清理：ReactAppDependencyProvider / react-native-gradle-plugin / react-native-assets / renderer/trace 在本 commit 已不存在。本轮读 packages/debugger-shell/ 全部 12 个非测试文件（产出 75 文档）；private/core-cli-utils/ 8 个 + packages/react-native/React/CxxBridge/ 5 个（产出 76 文档）；packages/react-native/ReactCommon/react/test_utils/ 全部 10 个非测试文件（产出 77 文档）；ESLint 三件套 13 个 + Babel 四件套 9 个 = 22 个（产出 78 文档）；packages/react-native-compatibility-check/ 全部 9 个源文件 4447 行（产出 79 文档，21 条结论 CMP-1…CMP-21）",
-      "gap": 85,
+      "note": "目录声明已清理：ReactAppDependencyProvider / react-native-gradle-plugin / react-native-assets / renderer/trace 在本 commit 已不存在。本轮读 packages/debugger-shell/ 全部 12 个非测试文件（产出 75 文档）；private/core-cli-utils/ 8 个 + packages/react-native/React/CxxBridge/ 5 个（产出 76 文档）；packages/react-native/ReactCommon/react/test_utils/ 全部 10 个非测试文件（产出 77 文档）；ESLint 三件套 13 个 + Babel 四件套 9 个 = 22 个（产出 78 文档）；packages/react-native-compatibility-check/ 全部 9 个源文件 4447 行（产出 79 文档，21 条结论 CMP-1…CMP-21）；packages/react-native/__typetests__/ 全部 8 个代码文件 2928 行 + flow/ 3 个 .js 222 行 = 11 个文件 3150 行（产出 80 文档，15 条结论 TYP-1…TYP-15；flow/ 下 5 个 .js.flow 7819 行不计入覆盖度口径）",
+      "gap": 74,
       "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
     },
     {
@@ -889,7 +890,7 @@
           "A6",
           "Z1"
         ],
-        "gap": 92
+        "gap": 81
       },
       {
         "n": 1,
@@ -995,7 +996,7 @@
         "gap": 234
       }
     ],
-    "totalGap": 3017
+    "totalGap": 3006
   },
   "docsIndex": {
     "07": {

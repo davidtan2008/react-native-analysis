@@ -13038,6 +13038,214 @@ addDocClaim('D217', '文档给出了哈希契约违反在 AttributedString 一�
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// 80 文档 · TypeScript 类型测试（__typetests__）与 Flow libdef
+//   TYP-1 … TYP-15
+// ────────────────────────────────────────────────────────────────────────
+{
+  const T = 'packages/react-native/__typetests__';
+  const rd = p => fs.readFileSync(path.join(REPO, p), 'utf8');
+  const tyFiles = [
+    'index.tsx',
+    'globals.tsx',
+    'animated.tsx',
+    'stylesheet-create.tsx',
+    'stylesheet-flatten.tsx',
+    'legacy-properties.tsx',
+    'fabric-component-sample.ts',
+    'turbo-module-sample.ts',
+  ];
+  const tyText = tyFiles.map(f => rd(T + '/' + f)).join('\n');
+  const tsconfig = rd(T + '/tsconfig.json');
+  const tscLegacy = rd(T + '/tsconfig.legacy.json');
+  const rnPkg = JSON.parse(rd('packages/react-native/package.json'));
+  const countOf = (h, n) => h.split(n).length - 1;
+
+  // ── TYP-1：34 条 $ExpectType 零校验 ──
+  const rootPkg = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
+  const allDeps = {...rootPkg.dependencies, ...rootPkg.devDependencies};
+  add('C648', 'TYP-1 核心：$ExpectType 在 __typetests__ 中共 34 处（index.tsx 28 + animated.tsx 6），而 tsd / dtslint / eslint-plugin-expect-type 都不在依赖里，也没有任何脚本读它 —— tsc 把它当普通注释',
+    '$ExpectType 34 处 + 无 tsd/dtslint 依赖',
+    'index.tsx:' + countOf(rd(T + '/index.tsx'), '$ExpectType') +
+      ' / animated.tsx:' + countOf(rd(T + '/animated.tsx'), '$ExpectType') +
+      ' / 依赖里的 tsd:' + ('tsd' in allDeps) +
+      ' / dtslint:' + ('dtslint' in allDeps) +
+      ' / eslint-plugin-expect-type:' + ('eslint-plugin-expect-type' in allDeps),
+    countOf(rd(T + '/index.tsx'), '$ExpectType') === 28 &&
+      countOf(rd(T + '/animated.tsx'), '$ExpectType') === 6 &&
+      !('tsd' in allDeps) &&
+      !('dtslint' in allDeps) &&
+      !('eslint-plugin-expect-type' in allDeps));
+
+  // ── TYP-2：strict: false 只开两个开关 ──
+  add('C649', 'TYP-2 核心：__typetests__/tsconfig.json 是 strict:false + 仅 noImplicitAny/noImplicitThis，lib 只有 es2020，types 为空数组 —— strictNullChecks 等四个开关全关，null/undefined 相关断言恒真',
+    'strict:false + 只有两个 strict 子开关 + lib es2020 + types []',
+    'strict:false:' + tsconfig.includes('"strict": false') +
+      ' / noImplicitAny:' + tsconfig.includes('"noImplicitAny": true') +
+      ' / noImplicitThis:' + tsconfig.includes('"noImplicitThis": true') +
+      ' / lib:' + /"lib": \["es2020"\]/.test(tsconfig) +
+      ' / types:' + /"types": \[\]/.test(tsconfig),
+    tsconfig.includes('"strict": false') &&
+      tsconfig.includes('"noImplicitAny": true') &&
+      tsconfig.includes('"noImplicitThis": true') &&
+      /"lib": \["es2020"\]/.test(tsconfig) &&
+      /"types": \[\]/.test(tsconfig) &&
+      !tsconfig.includes('strictNullChecks') &&
+      !tsconfig.includes('strictFunctionTypes') &&
+      !tsconfig.includes('strictPropertyInitialization'));
+
+  // ── TYP-3：globals.tsx 无 import，全局名的唯一来源是 src/types/globals.d.ts ──
+  const globalsTsx = rd(T + '/globals.tsx');
+  const globalsDts = rd('packages/react-native/src/types/globals.d.ts');
+  const legacyIndex = rd('packages/react-native/types_DEPRECATED/index.d.ts');
+  add('C650', 'TYP-3 核心：globals.tsx 不 import 任何模块，而 tsconfig 的 lib 不含 DOM、types 为空 —— fetch/WebSocket/FormData/console 只能来自 packages/react-native/src/types/globals.d.ts 的 declare global；legacy 侧靠 types_DEPRECATED/index.d.ts 的三斜线引用拉入同一文件',
+    'globals.tsx 零 import + d.ts 有 declare global + legacy 有三斜线引用',
+    'globals.tsx 的 import:' + countOf(globalsTsx, 'import ') +
+      ' / d.ts declare global:' + globalsDts.includes('declare global {') +
+      ' / d.ts 行数:' + globalsDts.split('\n').length +
+      ' / legacy reference:' + legacyIndex.includes('/// <reference path="../src/types/globals.d.ts" />'),
+    countOf(globalsTsx, 'import ') === 0 &&
+      globalsDts.includes('declare global {') &&
+      globalsDts.split('\n').length > 700 &&
+      legacyIndex.includes('/// <reference path="../src/types/globals.d.ts" />'));
+
+  // ── TYP-4：96 个 runtime 导出，36 个零覆盖 ──
+  const indexPath = rd('packages/react-native/index.js');
+  const runtimeExports = [...indexPath.matchAll(/^\s{2}get ([A-Za-z0-9_$]+)\(\)/gm)].map(m => m[1]);
+  const importedNames = new Set();
+  for (const f of tyFiles) {
+    const raw = rd(T + '/' + f)
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+    for (const m of raw.matchAll(/import\s*\{([\s\S]*?)\}\s*from\s*'react-native'/g)) {
+      for (let s of m[1].split(',')) {
+        s = s.trim().replace(/^type\s+/, '');
+        if (!s) continue;
+        s.split(/\s+as\s+/).forEach(x => importedNames.add(x.trim()));
+      }
+    }
+  }
+  const uncovered = runtimeExports.filter(k => !importedNames.has(k));
+  add('C651', 'TYP-4 核心：index.js 的 96 个 runtime getter 导出中，__typetests__ 的 8 个文件只 import 到 60 个，36 个从未出现（其中 11 个 unstable_/experimental_、25 个稳定 API）',
+    '96 导出 / 60 覆盖 / 36 未覆盖 / 11 unstable',
+    '导出:' + runtimeExports.length + ' / 覆盖:' + (runtimeExports.length - uncovered.length) +
+      ' / 未覆盖:' + uncovered.length +
+      ' / unstable:' + uncovered.filter(k => /^(unstable_|experimental_)/.test(k)).length,
+    runtimeExports.length === 96 &&
+      uncovered.length === 36 &&
+      uncovered.filter(k => /^(unstable_|experimental_)/.test(k)).length === 11 &&
+      uncovered.includes('AppRegistry') &&
+      uncovered.includes('PanResponder') &&
+      uncovered.includes('PixelRatio') &&
+      uncovered.includes('Easing') &&
+      uncovered.includes('Vibration'));
+
+  // ── TYP-5 / TYP-6：types_generated 与 types_DEPRECATED 的接线 ──
+  add('C652', 'TYP-5 / TYP-6：types_generated 被 .gitignore 忽略且不在树里，但 exports["."].types 指向它（必须先 build-types）；exports["./Libraries/*"] 的 types 显式为 null，只有 react-native-legacy-deep-imports 条件指向 types_DEPRECATED —— deep import 的类型只存在于 legacy 条件',
+    'types_generated 缺失 + Libraries/* 的 types 为 null + legacy 指向 types_DEPRECATED',
+    'types_generated 存在:' + fs.existsSync(path.join(REPO, 'packages/react-native/types_generated')) +
+      ' / gitignore:' + rd('.gitignore').includes('/packages/**/types_generated/') +
+      ' / .types:' + rnPkg.exports['.'].types +
+      ' / Libraries types:' + JSON.stringify(rnPkg.exports['./Libraries/*'].types) +
+      ' / Libraries legacy:' + rnPkg.exports['./Libraries/*']['react-native-legacy-deep-imports'],
+    !fs.existsSync(path.join(REPO, 'packages/react-native/types_generated')) &&
+      rd('.gitignore').includes('/packages/**/types_generated/') &&
+      rnPkg.exports['.'].types === './types_generated/index.d.ts' &&
+      rnPkg.exports['.']['react-native-legacy-deep-imports'] === './types_DEPRECATED/index.d.ts' &&
+      rnPkg.exports['./Libraries/*'].types === null &&
+      rnPkg.exports['./Libraries/*']['react-native-legacy-deep-imports'] === './types_DEPRECATED/Libraries/*.d.ts' &&
+      (rnPkg.files || []).includes('types_DEPRECATED'));
+
+  // ── TYP-7 / TYP-8：@ts-ignore 压在 import 上 ──
+  const indexTsx = rd(T + '/index.tsx');
+  const legacyProps = rd(T + '/legacy-properties.tsx');
+  const tsIgnoreLines = indexTsx.split('\n')
+    .map((l, i) => [i + 1, l])
+    .filter(([, l]) => l.includes('@ts-ignore'))
+    .map(([n]) => n);
+  add('C653', 'TYP-7 / TYP-8：index.tsx 的 5 处 @ts-ignore 全部位于 import 列表内（55/69/81/104/124），被压住的名字退化为 any；legacy-properties.tsx 全文只有 import + 空 class，且 import 前带 @ts-ignore —— 删掉 TextInputProperties 别名该文件仍会通过',
+    '5 处 @ts-ignore 在 import 内 + legacy-properties 被架空',
+    '行号:' + tsIgnoreLines.join(',') +
+      ' / NativeModule 注释:' + indexTsx.includes('NativeModule, // Not actually exported, not sure why') +
+      ' / legacy @ts-ignore:' + legacyProps.includes('// @ts-ignore') +
+      ' / legacy class body 空:' + legacyProps.includes('class Test extends React.Component<TextInputProperties> {}'),
+    tsIgnoreLines.join(',') === '55,69,81,104,124' &&
+      indexTsx.includes('NativeModule, // Not actually exported, not sure why') &&
+      legacyProps.includes('// @ts-ignore') &&
+      legacyProps.includes('class Test extends React.Component<TextInputProperties> {}') &&
+      countOf(legacyProps, '@ts-expect-error') === 0);
+
+  // ── TYP-9 / TYP-14 / TYP-15：跳过与绕过 ──
+  const animated = rd(T + '/animated.tsx');
+  const stCreate = rd(T + '/stylesheet-create.tsx');
+  const stFlatten = rd(T + '/stylesheet-flatten.tsx');
+  const fabricSample = rd(T + '/fabric-component-sample.ts');
+  const turboSample = rd(T + '/turbo-module-sample.ts');
+  add('C654', 'TYP-9 / TYP-14 / TYP-15：animated.tsx 用 "Skip until original is adjusted and type can be asserted" 主动跳过 SectionListRenderItemInfo 断言；两个 codegen 样本的 @ts-expect-error 数为 0；stylesheet-create 的 @ts-ignore 盖住整条 import，stylesheet-flatten 用 as ViewStyle 断言掉 flatten 的返回类型',
+    '跳过注释 + 样本 0 反例 + 两处绕过',
+    'skip 注释:' + animated.includes('Skip until original is adjusted and type can be asserted') +
+      ' / fabric 反例:' + countOf(fabricSample, '@ts-expect-error') +
+      ' / turbo 反例:' + countOf(turboSample, '@ts-expect-error') +
+      ' / create @ts-ignore:' + stCreate.includes("// @ts-ignore\nimport {View, StyleSheet, type ShadowStyleIOS} from 'react-native';") +
+      ' / flatten as:' + stFlatten.includes('StyleSheet.flatten([styles.container, props.style]) as ViewStyle'),
+    animated.includes('Skip until original is adjusted and type can be asserted') &&
+      animated.includes('info; // Should expect SectionListRenderItemInfo<number>') &&
+      countOf(fabricSample, '@ts-expect-error') === 0 &&
+      countOf(turboSample, '@ts-expect-error') === 0 &&
+      stCreate.includes("// @ts-ignore\nimport {View, StyleSheet, type ShadowStyleIOS} from 'react-native';") &&
+      stFlatten.includes('StyleSheet.flatten([styles.container, props.style]) as ViewStyle') &&
+      indexTsx.includes('const text = StyleSheet.compose(page.text, lists.listItem) as TextStyle;'));
+
+  // ── TYP-10：globals.tsx 缺 @format ──
+  const formatFlags = tyFiles.map(f => [f, rd(T + '/' + f).includes('@format')]);
+  add('C655', 'TYP-10：__typetests__ 的 8 个文件里只有 globals.tsx 缺 @format，而 .prettierrc.js 设了 requirePragma: true —— 该文件既不格式化也不被 format-check 检查（证据是它全篇 4 空格缩进）',
+    '仅 globals.tsx 缺 @format + requirePragma: true',
+    '缺 @format 的文件:' + formatFlags.filter(([, h]) => !h).map(([f]) => f).join(',') +
+      ' / requirePragma:' + rd('.prettierrc.js').includes('requirePragma: true') +
+      ' / 4 空格缩进样本:' + globalsTsx.includes('    clearInterval(null);'),
+    formatFlags.filter(([, h]) => !h).length === 1 &&
+      formatFlags.filter(([, h]) => !h)[0][0] === 'globals.tsx' &&
+      rd('.prettierrc.js').includes('requirePragma: true') &&
+      globalsTsx.includes('    clearInterval(null);') &&
+      globalsTsx.includes('const noop = () => { };'));
+
+  // ── TYP-11 / TYP-12 / TYP-13：flow/ 三个文件的边界 ──
+  const flowGlobal = rd('packages/react-native/flow/global.js');
+  const flowDir = path.join(REPO, 'packages/react-native/flow');
+  const flowFiles = fs.readdirSync(flowDir);
+  const flowDefFiles = flowFiles.filter(f => path.extname(f) === '.flow');
+  const flowDefLines = flowDefFiles.reduce(
+    (s, f) => s + fs.readFileSync(path.join(flowDir, f), 'utf8').split('\n').length, 0);
+  add('C656', 'TYP-11 / TYP-12 / TYP-13：flow/global.js 用 [string | symbol]: any 索引器打穿整份 declare var global（注释自认 "Undeclared properties are implicitly any"）；__DEV__ 的重复声明对象是 TypeScript 的 src/types/globals.d.ts:56 而不是另一个 Flow libdef；flow/ 下 5 个 .js.flow 共 7819 行因 path.extname 为 .flow 而不计入覆盖度',
+    '索引器 + __DEV__ 两处声明 + 5 个 .js.flow 7819 行',
+    '索引器:' + flowGlobal.includes('[string | symbol]: any,') +
+      ' / 自认注释:' + flowGlobal.includes('Undeclared properties are implicitly `any`.') +
+      ' / flow 侧 __DEV__ 声明数:' + countOf(flowGlobal, 'declare var __DEV__') +
+      ' / .js.flow 数:' + flowDefFiles.length + ' 行数:' + flowDefLines,
+    flowGlobal.includes('[string | symbol]: any,') &&
+      flowGlobal.includes('Undeclared properties are implicitly `any`.') &&
+      flowGlobal.includes('declare var __DEV__: boolean;') &&
+      countOf(flowGlobal, 'declare var __DEV__') === 1 &&
+      rd('packages/react-native/src/types/globals.d.ts').includes('const __DEV__: boolean;') &&
+      !flowFiles.some(f => f === '__DEV__.js') &&
+      flowDefFiles.length === 5 &&
+      flowDefLines > 7800 && flowDefLines < 7830 &&
+      path.extname('dom.js.flow') === '.flow' &&
+      !new Set(['.js', '.mjs', '.ts', '.tsx', '.kt', '.java', '.mm', '.m', '.h', '.cpp', '.cc', '.swift', '.py']).has('.flow'));
+
+  // ── 文档侧 ──
+  addDocClaim('D267', '80 文档写明 34 条 $ExpectType 无人解析', /\$ExpectType`?\s*是纯注释|34 条 `\$ExpectType` 是纯注释|无人解析/, {min: 1});
+  addDocClaim('D268', '80 文档写明 strict:false 导致 nullability 断言恒真', /strictNullChecks|strict: false`? → nullability 断言恒真/, {min: 1});
+  addDocClaim('D269', '80 文档写明 globals.tsx 的全局名只有一个来源', /globals\.tsx`? 的全部全局名只有一个来源|src\/types\/globals\.d\.ts/, {min: 1});
+  addDocClaim('D270', '80 文档写明 96 个 runtime 导出里 36 个零覆盖', /96 个 runtime 导出里 36 个|36 个从未进入类型测试/, {min: 1});
+  addDocClaim('D271', '80 文档写明 types_generated 不在树里且需先构建', /types_generated\/?`?\s*(被忽略|不在树里|被 gitignore)/, {min: 1});
+  addDocClaim('D272', '80 文档写明 types_DEPRECATED 是 deep import 的唯一类型源', /deep import 的唯一类型源|唯一类型来源/, {min: 1});
+  addDocClaim('D273', '80 文档写明 5 处 @ts-ignore 压在 import 上', /5 处 `@ts-ignore` 全压在 import 上|全压在 import 上/, {min: 1});
+  addDocClaim('D274', '80 文档写明 legacy-properties.tsx 被完全架空', /legacy-properties\.tsx`?\s*被 `@ts-ignore` 完全架空|自我架空/, {min: 1});
+  addDocClaim('D275', '80 文档写明 globals.tsx 是唯一缺 @format 的文件', /唯一缺 `@format` 的文件|不受 Prettier 约束/, {min: 1});
+  addDocClaim('D276', '80 文档写明 flow/global.js 的索引器打穿类型面', /索引器.{0,8}打穿|打穿整份 `declare var global`/, {min: 1});
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // 报告
 // ────────────────────────────────────────────────────────────────────────
 const fail = checks.filter(c => !c.ok);
