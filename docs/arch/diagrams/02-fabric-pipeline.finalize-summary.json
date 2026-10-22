@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "workflow",
+  "quality": "showcase",
+  "specification": {
+    "path": ".archify/workflow-fabric-pipeline-20260929-143000/candidate.json",
+    "sha256": "65176da46988e661fc6b8406ea0b256532a13b7313b33b66aae697943b067f9f",
+    "bytes": 6721
+  },
+  "artifact": {
+    "path": "docs/arch/diagrams/02-fabric-pipeline.html",
+    "sha256": "0b02989bf8aadf064fe53e12fa4ba5f42ed0c8a98ef203bf9929f71cd8697794",
+    "bytes": 759786
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "docs/arch/diagrams/02-fabric-pipeline.finalize.json",
+    "summaryReceipt": "docs/arch/diagrams/02-fabric-pipeline.finalize-summary.json",
+    "browserCheckReceipt": "docs/arch/diagrams/02-fabric-pipeline.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1691,
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "routesOverSuggestedBends": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [],
+      "detours": [
+        {
+          "relationship": {
+            "id": "e5",
+            "from": "schedule",
+            "to": "pull",
+            "label": "渲染更新 drain",
+            "collectionIndex": 4,
+            "artifactIndex": 5
+          },
+          "bends": 3,
+          "stretch": 1.108
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "schedule → pull needs 3 bends: move node schedule or pull so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": ".archify/architecture-runtime-layers-20260929-140200/candidate.json",
+    "sha256": "1eea06439dbb340972a3ab0cfc726936f87935aca0a8547e6ac1b83be0b24643",
+    "bytes": 9271
+  },
+  "artifact": {
+    "path": "docs/arch/diagrams/01-runtime-layers.html",
+    "sha256": "eadf47f2880695eb7d145afcb21cee47e7075266f5834c2e773b92ab9f7a2692",
+    "bytes": 775359
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "docs/arch/diagrams/01-runtime-layers.finalize.json",
+    "summaryReceipt": "docs/arch/diagrams/01-runtime-layers.finalize-summary.json",
+    "browserCheckReceipt": "docs/arch/diagrams/01-runtime-layers.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1687,
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "routesOverSuggestedBends": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [],
+      "detours": [
+        {
+          "relationship": {
+            "id": "c-runtime-jsi",
+            "from": "runtime",
+            "to": "jsi",
+            "label": "持有 jsi::Runtime",
+            "collectionIndex": 6,
+            "artifactIndex": 7
+          },
+          "bends": 3,
+          "stretch": 1
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "runtime → jsi needs 3 bends: move node runtime or jsi so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "0133926f-f0c7-47c5-9a57-d998b045e113",
+  "status": "current",
+  "command": "deliver",
+  "type": "sequence",
+  "input": ".archify/sequence-crash-pipeline-20260929-141000/candidate.json",
+  "output": "docs/arch/diagrams/04-crash-pipeline.html",
+  "specification": {
+    "sha256": "4da9704aa8a834d3bd209b89ee93de1e44f59490a26c57994e2832a37b07045a",
+    "bytes": 4612
+  },
+  "artifact": {
+    "sha256": "4234ce95b0c19c08a5ad8b4d1fb73651b84f3527f47d4435ac90b7a6621eceb2",
+    "bytes": 752969
+  }
+}

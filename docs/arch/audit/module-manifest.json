@@ -1,0 +1,1100 @@
+{
+  "$schema": "./module-manifest.schema.md",
+  "updated": "2026-09-29",
+  "$comment": [
+    "本清单按【目录】而非【代表性文件】划分，用于避免高估覆盖率。",
+    "status 含义：done=该主题已成文；partial=部分成文；todo=未开始。",
+    "readFiles 为本次实际读过并被文档引用的文件数（估算，依据见 audit/README.md）。",
+    "fileCount 由 dirs.mjs 实测得出：node docs/arch/audit/dirs.mjs",
+    "IMPORTANT: status=done 不代表目录内全部文件读过，见 readFiles vs fileCount 的差值。"
+  ],
+  "baseline": {
+    "totalCodeFiles": 4176,
+    "excluded": {
+      "note": "以下目录不纳入模块划分",
+      "paths": {
+        "packages/debugger-frontend/dist": "预编译 Chromium DevTools 前端副本",
+        "packages/react-native/types_DEPRECATED": "手写旧版 .d.ts，已被 Flow 生成取代",
+        "packages/rn-tester": "示例 App（RNTester）",
+        "packages/jest-preset/jest/mocks": "jest mock 桩"
+      },
+      "fileCount": 785
+    }
+  },
+  "tiers": {
+    "T1": "框架核心，理解 RN 必须（本次已基本成文）",
+    "T2": "重要子系统，性能与稳定性相关",
+    "T3": "平台实现细节，按需查阅",
+    "T4": "工具链与周边，不影响运行时理解"
+  },
+  "modules": [
+    {
+      "id": "A1",
+      "tier": "T1",
+      "name": "渲染器核心（ShadowNode / UIManager / Mounting / Scheduler）",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/renderer/core",
+        "packages/react-native/ReactCommon/react/renderer/uimanager",
+        "packages/react-native/ReactCommon/react/renderer/mounting",
+        "packages/react-native/ReactCommon/react/renderer/scheduler",
+        "packages/react-native/ReactCommon/react/renderer/runtimescheduler"
+      ],
+      "fileCount": 167,
+      "readFiles": 39,
+      "status": "partial",
+      "docs": [
+        "02",
+        "03",
+        "09",
+        "53",
+        "58"
+      ],
+      "note": "A1 已读 13。本轮读 LayoutableShadowNode 的命中测试变换段（:287-303）",
+      "gap": 128,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "A2",
+      "tier": "T1",
+      "name": "Fabric 组件层（Text/View/Image/ScrollView 的 ShadowNode 与 props）",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/renderer/components"
+      ],
+      "fileCount": 218,
+      "readFiles": 47,
+      "status": "in_progress",
+      "docs": [
+        "07",
+        "10",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "60",
+        "61"
+      ],
+      "note": "A2 已读 64。本轮读 ScrollView 状态与裁剪 3 文件（components/scrollview/{ScrollViewShadowNode.cpp 全文 80, ScrollViewState.h 全文 62, ScrollViewState.cpp 全文 24} + mounting/internal/CullingContext.cpp）",
+      "gap": 171,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "A3",
+      "tier": "T1",
+      "name": "运行时与 JS 引擎接口（ReactInstance / JSI / Timer）",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/runtime",
+        "packages/react-native/ReactCommon/jsi",
+        "packages/react-native/ReactCommon/reactperflogger"
+      ],
+      "fileCount": 64,
+      "readFiles": 22,
+      "status": "partial",
+      "docs": [
+        "02",
+        "03",
+        "11"
+      ],
+      "note": "已读 22 并成文（11 文档：ReactInstance 构造/initializeRuntime 的 8 个 RN$ 全局/RuntimeExecutor 兜底捕获 + jserrorhandler 全部）。新增本轮：ReactInstance.h/.cpp、jserrorhandler/JsErrorHandler.h/.cpp。未读：jsi/ 18 文件（vendored，含 decorator.h/threadsafe.h/instrumentation.h）、BufferedRuntimeExecutor、CallInvokerImpl、BridgelessNativeMethodCallInvoker、reactperflogger、nativeviewconfig",
+      "gap": 42,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "A4",
+      "tier": "T1",
+      "name": "错误处理（C++ 中枢 + 三端分发 + DevSupport）",
+      "dirs": [
+        "packages/react-native/ReactCommon/jserrorhandler",
+        "packages/react-native/ReactCommon/react/debug",
+        "packages/react-native/Libraries/LogBox"
+      ],
+      "fileCount": 45,
+      "readFiles": 45,
+      "status": "partial",
+      "docs": [
+        "04",
+        "05",
+        "06",
+        "65",
+        "73"
+      ],
+      "note": "A4 已读 45。本轮读 Libraries/LogBox/Data 4 文件（parseLogBoxLog.js 420 / LogBoxData.js 558 / LogBoxSymbolication.js 65 / LogBoxLog.js），与 C++ 侧 RedBoxErrorParser 做双实现对照",
+      "gap": 0,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "A5",
+      "tier": "T1",
+      "name": "JS 启动装配与核心运行时环境",
+      "dirs": [
+        "packages/react-native/Libraries/Core",
+        "packages/react-native/src/private/setup",
+        "packages/react-native/Libraries/ReactNative"
+      ],
+      "fileCount": 73,
+      "readFiles": 32,
+      "status": "partial",
+      "docs": [
+        "01",
+        "03",
+        "13"
+      ],
+      "note": "已读 32 并成文（13 文档：JS 启动装配全链路）。本轮读：InitializeCore.js、src/setup-env.js、src/private/setup/setUpDefaultReactNativeEnvironment.js、metro-config/src/index.flow.js:55-74、community-cli-plugin/src/utils/loadMetroConfig.js:55-72、全部 setUp* 的存在性与门控。未读：Libraries/Core/Timers(JSTimers.js/immediateShim.js/queueMicrotask.js/NativeTiming.js)、SegmentFetcher、Libraries/ReactNative/AppRegistry 内部、setUpReactRefresh",
+      "gap": 41,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "A6",
+      "tier": "T1",
+      "name": "事件循环与性能计时",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/performance",
+        "packages/react-native/ReactCommon/cxxreact"
+      ],
+      "fileCount": 52,
+      "readFiles": 45,
+      "status": "partial",
+      "docs": [
+        "03",
+        "05",
+        "66",
+        "69",
+        "71",
+        "74"
+      ],
+      "note": "A6 已读 45。本轮读 performance/timeline/PerformanceObserver.h+.cpp + mapbuffer/MapBufferBuilder.h+.cpp",
+      "gap": 7,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "A7",
+      "tier": "T1",
+      "name": "内存管理（ShadowNode 引用计数 / 泄漏检测 / 压力响应）",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/renderer/consistency",
+        "packages/react-native/Libraries/Image"
+      ],
+      "fileCount": 61,
+      "readFiles": 20,
+      "status": "partial",
+      "docs": [
+        "03",
+        "05",
+        "06",
+        "12"
+      ],
+      "note": "已读 20 并成文（12 文档：UI 一致性/ShadowTree 修订版锁定与惰性快照）。本轮读：consistency/{ShadowTreeRevisionConsistencyManager.h,ScopedShadowTreeRevisionLock.h}、uimanager/consistency/LazyShadowTreeRevisionConsistencyManager.h/.cpp、UIManager.cpp:210-227、ShadowTree.h:134,174 与 .cpp:368,459,482,560-568、RuntimeScheduler_Modern/Legacy 的一致性接线。未读：Libraries/Image 约 45 文件（RCTImageCache 已读）、renderer/graphics/字体测量相关、LeakChecker 余部",
+      "gap": 41,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "B1",
+      "tier": "T2",
+      "name": "TurboModule 与代码生成",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/nativemodule",
+        "packages/react-native/ReactCommon/react/bridging",
+        "packages/react-native/src/private/specs_DEPRECATED",
+        "packages/react-native-codegen/src"
+      ],
+      "fileCount": 233,
+      "readFiles": 41,
+      "status": "reading",
+      "docs": [
+        "14",
+        "39",
+        "43",
+        "52"
+      ],
+      "note": "B1 已读 12。本轮读 codegen 9 文件",
+      "gap": 192,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "B2",
+      "tier": "T2",
+      "name": "动画系统（JS Animated / NativeAnimated / animationbackend）",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/renderer/animated",
+        "packages/react-native/ReactCommon/react/renderer/animationbackend",
+        "packages/react-native/Libraries/Animated",
+        "packages/react-native/Libraries/NativeAnimation",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/animated"
+      ],
+      "fileCount": 184,
+      "readFiles": 29,
+      "status": "todo",
+      "docs": [
+        "51",
+        "57"
+      ],
+      "note": "B2 已读 23。本轮读动画节点族 5 文件（AnimatedInterpolation.js 全文 571、AnimatedStyle.js:238-250、AnimatedColor.js、AnimatedTransform.js、src/private/animated/NativeAnimatedValidation.js）",
+      "gap": 155,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "B3",
+      "tier": "T2",
+      "name": "文本布局与测量",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/renderer/textlayoutmanager",
+        "packages/react-native/Libraries/Text"
+      ],
+      "fileCount": 44,
+      "readFiles": 2,
+      "status": "todo",
+      "docs": [],
+      "note": "仅知道路径，未读实现",
+      "gap": 42,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "B4",
+      "tier": "T2",
+      "name": "图形与样式（graphics / css / StyleSheet）",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/renderer/graphics",
+        "packages/react-native/ReactCommon/react/renderer/css",
+        "packages/react-native/Libraries/StyleSheet"
+      ],
+      "fileCount": 110,
+      "readFiles": 8,
+      "status": "todo",
+      "docs": [
+        "56",
+        "58"
+      ],
+      "note": "B4 已读 8。本轮读图形层 4 文件（graphics/Transform.cpp 全文 513、graphics/Transform.h 全文 246、core/LayoutableShadowNode.cpp:277-305）",
+      "gap": 102,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "B5",
+      "tier": "T2",
+      "name": "图片管线",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/renderer/imagemanager"
+      ],
+      "fileCount": 27,
+      "readFiles": 8,
+      "status": "partial",
+      "docs": [
+        "03",
+        "05"
+      ],
+      "note": "已读 ImageManager/ImageFetcher/ImageTelemetry/RCTImageCache。Fresco 集成层未细读",
+      "gap": 19,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "B6",
+      "tier": "T2",
+      "name": "网络层与 Blob",
+      "dirs": [
+        "packages/react-native/Libraries/Network",
+        "packages/react-native/Libraries/Blob"
+      ],
+      "fileCount": 44,
+      "readFiles": 0,
+      "status": "todo",
+      "docs": [],
+      "gap": 44,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "B7",
+      "tier": "T2",
+      "name": "Web API 兼容层（Observer / DOM Traversal / Performance）",
+      "dirs": [
+        "packages/react-native/src/private/webapis"
+      ],
+      "fileCount": 57,
+      "readFiles": 12,
+      "status": "partial",
+      "docs": [
+        "03",
+        "05"
+      ],
+      "note": "已读 Performance.js/MemoryInfo/ReactNativeStartupTiming。Observer 三件套未读",
+      "gap": 45,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "B8",
+      "tier": "T2",
+      "name": "虚拟化列表",
+      "dirs": [
+        "packages/virtualized-lists/Lists",
+        "packages/react-native/Libraries/Lists"
+      ],
+      "fileCount": 21,
+      "readFiles": 12,
+      "status": "done",
+      "docs": [
+        "05",
+        "06"
+      ],
+      "note": "核心文件已全部读过",
+      "gap": 9,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "B9",
+      "tier": "T2",
+      "name": "DevTools / CDP / Inspector",
+      "dirs": [
+        "packages/react-native/ReactCommon/jsinspector-modern",
+        "packages/dev-middleware/src"
+      ],
+      "fileCount": 127,
+      "readFiles": 30,
+      "status": "partial",
+      "docs": [
+        "03"
+      ],
+      "note": "已读 HostTarget/PerformanceTracer/HostAgent/CdpMetricsReporter/InspectorProxy。network/ 与 cdp/ 子目录未细读",
+      "gap": 97,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "B10",
+      "tier": "T2",
+      "name": "事件系统（合成事件 / 优先级 / 派发）",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/renderer/observers"
+      ],
+      "fileCount": 16,
+      "readFiles": 6,
+      "status": "partial",
+      "docs": [
+        "03"
+      ],
+      "note": "仅读过 EventEmitter/EventPerformanceLogger 接口",
+      "gap": 10,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "C1",
+      "tier": "T3",
+      "name": "iOS 平台实现（Base / Fabric / CoreModules / Views）",
+      "dirs": [
+        "packages/react-native/React/Base",
+        "packages/react-native/React/Fabric",
+        "packages/react-native/React/CoreModules",
+        "packages/react-native/React/Views",
+        "packages/react-native/React/Modules"
+      ],
+      "fileCount": 372,
+      "readFiles": 218,
+      "status": "partial",
+      "docs": [
+        "02",
+        "04",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "36",
+        "37",
+        "38",
+        "54",
+        "59"
+      ],
+      "note": "C1 已读 45。本轮读 RCTUtils.mm 的 RCTJSErrorFromCodeMessageAndNSError（:550-570）",
+      "gap": 154,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "C2",
+      "tier": "T3",
+      "name": "Android 平台实现（bridge / uimanager / views / modules / fabric）",
+      "dirs": [
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/bridge",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/uimanager",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/views",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/modules",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/fabric"
+      ],
+      "fileCount": 466,
+      "readFiles": 120,
+      "status": "partial",
+      "docs": [
+        "02",
+        "04",
+        "05",
+        "15",
+        "16",
+        "17",
+        "40",
+        "41",
+        "42",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "59",
+        "61"
+      ],
+      "note": "C2 已读 N。本轮读 Android 滚动 3 文件（views/scroll/{MaintainVisibleScrollPositionHelper.kt 全文 166, ReactScrollView.kt:397-455} + 目录级 RTL 检索）",
+      "gap": 346,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "C3",
+      "tier": "T3",
+      "name": "Android JNI 胶水层",
+      "dirs": [
+        "packages/react-native/ReactAndroid/src/main/jni"
+      ],
+      "fileCount": 180,
+      "readFiles": 23,
+      "status": "partial",
+      "docs": [
+        "18",
+        "50"
+      ],
+      "note": "C3 已读 14。本轮读 Android JNI 层 14 文件（fabric/FabricUIManagerBinding.cpp、fabric/EventBeatManager.cpp、fabric/FabricMountingManager.cpp、turbomodule/ReactCommon/TurboModuleManager.cpp、jni/{MethodInvoker,JArrayBuffer,NativeCommon}.cpp、tracing/PerformanceTracerCxxInterop.cpp、devsupport/JInspectorNetworkReporter.cpp、first-party/yogajni/jni/{YGJNIVanilla,YogaJniException}.cpp、jni/ScopedGlobalRef.h、jni/ScopedLocalRef.h、first-party/jni-lib-merge/jni_lib_merge.h）",
+      "gap": 157,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "C5",
+      "tier": "T3",
+      "name": "通用视图组件（ScrollView / Switch / TextInput / Modal 等）",
+      "dirs": [
+        "packages/react-native/Libraries/Components",
+        "packages/react-native/Libraries/NativeComponent"
+      ],
+      "fileCount": 92,
+      "readFiles": 5,
+      "status": "partial",
+      "docs": [
+        "05",
+        "55"
+      ],
+      "note": "C5 已读 6。本轮读 ScrollView.js 的掉帧埋点配对段（:795-797、:863-864、:1360-1427）",
+      "gap": 87,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "C6",
+      "tier": "T3",
+      "name": "AppDelegate / 宿主集成 / Dev Menu / HMR",
+      "dirs": [
+        "packages/react-native/Libraries/AppDelegate",
+        "packages/react-native/Libraries/Utilities",
+        "packages/react-native/React/DevSupport",
+        "packages/react-native/React/Inspector"
+      ],
+      "fileCount": 83,
+      "readFiles": 10,
+      "status": "partial",
+      "docs": [
+        "03"
+      ],
+      "note": "仅读过 setUpDeveloperTools/HMRClient/ApplicationEntryPoint 相关",
+      "gap": 73,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "D1",
+      "tier": "T4",
+      "name": "构建与发布工具链",
+      "dirs": [
+        "packages/react-native/scripts",
+        "scripts",
+        "packages/gradle-plugin"
+      ],
+      "fileCount": 294,
+      "readFiles": 41,
+      "status": "partial",
+      "docs": [
+        "01",
+        "49",
+        "68"
+      ],
+      "note": "D1 已读 37。本轮读 scripts/releases 版本流水线 12 文件（set-version.js / set-rn-artifacts-version.js / utils/version-utils.js / templates 4 个 / 4 个生成的版本文件 + cxxreact 弃用转发头），另读 monorepoUtils.js（版本写入）与 2 个 CI workflow 作为证据",
+      "gap": 253,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "D2",
+      "tier": "T4",
+      "name": "测试基础设施（Fantom / jest-preset）",
+      "dirs": [
+        "private/react-native-fantom",
+        "packages/jest-preset"
+      ],
+      "fileCount": 98,
+      "readFiles": 1,
+      "status": "todo",
+      "docs": [],
+      "note": "仅知道 Fantom 是 C++ 集成测试运行器",
+      "gap": 97,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "D3",
+      "tier": "T4",
+      "name": "CLI / 社区插件 / 其他包",
+      "dirs": [
+        "packages/community-cli-plugin",
+        "packages/react-native-popup-menu-android",
+        "packages/metro-config",
+        "packages/asset-utils",
+        "packages/assets-registry"
+      ],
+      "fileCount": 61,
+      "readFiles": 0,
+      "status": "todo",
+      "docs": [
+        "01"
+      ],
+      "note": "仅在包清单中提及",
+      "gap": 61,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "Z1",
+      "tier": "T4",
+      "name": "杂项包与零星文件（工具链周边 / 模板 / 测试库）",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/utils",
+        "packages/react-native/ReactCommon/react/featureflags",
+        "packages/react-native/ReactCommon/react/test_utils",
+        "packages/react-native/ReactCommon/react/cxxstableapi",
+        "packages/react-native/React/CxxBridge",
+        "packages/react-native/__typetests__",
+        "packages/new-app-screen",
+        "packages/react-native-compatibility-check",
+        "packages/react-native-test-library",
+        "packages/eslint-plugin-react-native",
+        "packages/eslint-plugin-specs",
+        "packages/debugger-shell",
+        "packages/typescript-config",
+        "private/core-cli-utils",
+        "private/eslint-plugin-monorepo",
+        "private/helloworld",
+        "packages/react-native/React/I18n",
+        "packages/react-native/React/Profiler",
+        "packages/react-native/ReactAppDependencyProvider",
+        "packages/react-native/flow",
+        "packages/react-native-babel-preset",
+        "packages/polyfills",
+        "packages/eslint-config-react-native",
+        "packages/react-native-gradle-plugin",
+        "packages/react-native-babel-transformer",
+        "packages/react-native-assets",
+        "packages/react-native/ReactCommon/react/renderer/viewtransition",
+        "packages/react-native/ReactCommon/react/renderer/trace",
+        "packages/react-native/ReactCommon/react/renderer/debug",
+        "packages/react-native/ReactCommon/react/renderer/bridging",
+        "packages/babel-plugin-codegen"
+      ],
+      "fileCount": 188,
+      "readFiles": 37,
+      "status": "partial",
+      "docs": [
+        "62",
+        "63",
+        "67",
+        "72"
+      ],
+      "note": "Z1 已读 37。本轮读 ReactCommon/react/renderer/debug 7 文件 + bridging 2 + viewtransition 2",
+      "gap": 151,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "E1",
+      "tier": "T2",
+      "name": "Renderer 基础设施（componentregistry / element / attributedstring / mapbuffer）",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/renderer/componentregistry",
+        "packages/react-native/ReactCommon/react/renderer/element",
+        "packages/react-native/ReactCommon/react/renderer/attributedstring",
+        "packages/react-native/ReactCommon/react/renderer/mapbuffer",
+        "packages/react-native/ReactCommon/react/renderer/dom"
+      ],
+      "note": "E1 已读 35。本轮读 attributedstring/AttributedString.h+.cpp",
+      "fileCount": 36,
+      "readFiles": 35,
+      "status": "partial",
+      "docs": [
+        "08",
+        "64",
+        "70",
+        "74"
+      ],
+      "gap": 1,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "E2",
+      "tier": "T4",
+      "name": "C++ 通用工具库（utils / telemetry / networking / cxxstableapi）",
+      "dirs": [
+        "packages/react-native/ReactCommon/react/renderer/telemetry",
+        "packages/react-native/ReactCommon/react/networking",
+        "packages/react-native/ReactCommon/react/timing"
+      ],
+      "note": "模板/哈希/时间/上下文容器等基础设施",
+      "fileCount": 9,
+      "readFiles": 0,
+      "status": "todo",
+      "docs": [],
+      "gap": 9,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "E3",
+      "tier": "T1",
+      "name": "Feature Flags（C++ 侧）",
+      "dirs": [],
+      "note": "与 D1 的 JS 配置互补",
+      "fileCount": 0,
+      "readFiles": 0,
+      "status": "todo",
+      "docs": [],
+      "gap": 0,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "E4",
+      "tier": "T2",
+      "name": "JS 私有层（src/private：devsupport / devmenu / components / testing）",
+      "dirs": [
+        "packages/react-native/src/private/devsupport",
+        "packages/react-native/src/private/testing",
+        "packages/react-native/src/private/renderer",
+        "packages/react-native/src/private/featureflags",
+        "packages/react-native/src/private/timers",
+        "packages/react-native/src/private/types",
+        "packages/react-native/src/private/console"
+      ],
+      "note": "devmenu / Fantom 测试框架 / JS 侧渲染桥接",
+      "fileCount": 38,
+      "readFiles": 0,
+      "status": "todo",
+      "docs": [],
+      "gap": 38,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "E5",
+      "tier": "T2",
+      "name": "Yoga 布局引擎（vendored）",
+      "dirs": [
+        "packages/react-native/ReactCommon/yoga",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/yoga"
+      ],
+      "note": "E5 已读 4。本轮读 vendored Yoga 4 文件（yoga/node/Node.cpp、yoga/numeric/Comparison.h、yoga/algorithm/CalculateLayout.cpp:1100-1120）",
+      "fileCount": 118,
+      "readFiles": 4,
+      "status": "todo",
+      "docs": [
+        "53"
+      ],
+      "gap": 114,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "E6",
+      "tier": "T3",
+      "name": "ReactCxxPlatform（C++ 平台层）",
+      "dirs": [
+        "packages/react-native/ReactCxxPlatform"
+      ],
+      "note": "第三平台宿主实现",
+      "fileCount": 82,
+      "readFiles": 0,
+      "status": "todo",
+      "docs": [],
+      "gap": 82,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "E7",
+      "tier": "T3",
+      "name": "Android 根级 API（ReactActivity / Host / Package 等）",
+      "dirs": [
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactActivity.java",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactFragment.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactRootView.java",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactNativeHost.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactInstanceManager.java",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactInstanceManagerBuilder.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactHost.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactApplication.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactDelegate.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactPackage.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactPackageHelper.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactPackageTurboModuleManagerDelegate.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/NativeModuleRegistryBuilder.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/HeadlessJsTaskService.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/MemoryPressureRouter.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/BaseReactPackage.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/DebugCorePackage.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactInstanceEventListener.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactAndroidHWInputDeviceHelper.kt",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/common",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/config",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/defaults",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/internal",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/jstasks",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/packagerconnection",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/soloader",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/touch",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/turbomodule",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/interfaces",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/module",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/reactperflogger",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/performance",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/inspection",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/root",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/shell",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/trace",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/devsupport/interfaces",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/activityresult",
+        "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/appearance",
+        "packages/react-native/ReactAndroid/cmake-utils"
+      ],
+      "note": "已读 11 并成文（15 文档：ReactHost/ReactNativeHost 双轨、DefaultReactHost 单例、ReactInstanceManager 创建线程、ReactMarker 埋点体系、MemoryPressureRouter 路由）。本轮读：ReactHost.kt/ReactInstanceManager.java(启动段)/defaults/{DefaultReactHost,DefaultReactNativeHost}.kt/bridge/{ReactMarker,ReactMarkerConstants}.kt/MemoryPressureRouter.kt/runtime/ReactHostImpl.kt(内存压力段)/scripts/cocoapods/new_architecture.rb(新架构开关)。未读：common(27)/internal(24, 含 featureflags 13)/devsupport/interfaces(12)/packagerconnection(7)/jstasks(6)/ReactRootView(1069)/HeadlessJsTaskService/ReactActivity/ReactInstanceManagerBuilder",
+      "fileCount": 135,
+      "readFiles": 11,
+      "status": "partial",
+      "docs": [
+        "15"
+      ],
+      "gap": 124,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "E8",
+      "tier": "T3",
+      "name": "零散 JS 库（Alert/AppState/Modal/Share/Pressability 等）",
+      "dirs": [
+        "packages/react-native/Libraries/ActionSheetIOS",
+        "packages/react-native/Libraries/AppState",
+        "packages/react-native/Libraries/Modal",
+        "packages/react-native/Libraries/Share",
+        "packages/react-native/Libraries/PermissionsAndroid",
+        "packages/react-native/Libraries/FBLazyVector",
+        "packages/react-native/Libraries/TurboModule",
+        "packages/react-native/Libraries/YellowBox",
+        "packages/react-native/Libraries/Pressability",
+        "packages/react-native/Libraries/EventEmitter",
+        "packages/react-native/Libraries/Interaction",
+        "packages/react-native/Libraries/Linking",
+        "packages/react-native/Libraries/LinkingIOS",
+        "packages/react-native/Libraries/Debugging",
+        "packages/react-native/Libraries/TypeSafety",
+        "packages/react-native/Libraries/Types",
+        "packages/react-native/Libraries/Vibration",
+        "packages/react-native/Libraries/PushNotificationIOS",
+        "packages/react-native/Libraries/Alert",
+        "packages/react-native/Libraries/WebSocket",
+        "packages/react-native/Libraries/Settings",
+        "packages/react-native/Libraries/NativeModules",
+        "packages/react-native/Libraries/Renderer",
+        "packages/react-native/Libraries/BatchedBridge",
+        "packages/react-native/Libraries/UTFSequence.js",
+        "packages/react-native/Libraries/Promise.js",
+        "packages/react-native/Libraries/promiseRejectionTrackingOptions.js",
+        "packages/react-native/Libraries/Required",
+        "packages/react-native/Libraries/LayoutAnimation",
+        "packages/react-native/Libraries/Performance"
+      ],
+      "note": "E8 已读 15。本轮读零散 JS 库 8 文件（TextInputState.js 的 :34-70/:181-198、Modal.js:194-223、AppState.js:60-95、Libraries 全域 __DEV__ 分布实测、AppStateModule.kt:70-95）",
+      "fileCount": 103,
+      "readFiles": 15,
+      "status": "todo",
+      "docs": [
+        "55",
+        "56"
+      ],
+      "gap": 88,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "E9",
+      "tier": "T3",
+      "name": "JS 引擎抽象与其他 C++ 胶水",
+      "dirs": [
+        "packages/react-native/ReactCommon/hermes",
+        "packages/react-native/ReactCommon/jsc",
+        "packages/react-native/ReactCommon/jsitooling",
+        "packages/react-native/ReactCommon/runtimeexecutor",
+        "packages/react-native/ReactCommon/jsiexecutor",
+        "packages/react-native/ReactCommon/callinvoker",
+        "packages/react-native/ReactCommon/oscompat"
+      ],
+      "note": "JSC 支持已弃用；callinvoker 是跨线程调用核心",
+      "fileCount": 32,
+      "readFiles": 0,
+      "status": "todo",
+      "docs": [],
+      "gap": 32,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "E10",
+      "tier": "T3",
+      "name": "iOS 剩余（I18n / Profiler / CxxModule / CxxBridge）",
+      "dirs": [
+        "packages/react-native/React/CxxModule",
+        "packages/react-native/ReactApple",
+        "packages/react-native/React/Tests"
+      ],
+      "note": "国际化、性能 profiler、C++ 模块桥",
+      "fileCount": 18,
+      "readFiles": 0,
+      "status": "todo",
+      "docs": [],
+      "gap": 18,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    },
+    {
+      "id": "E11",
+      "tier": "T4",
+      "name": "codegen 端到端测试夹具",
+      "dirs": [
+        "packages/react-native-codegen/e2e"
+      ],
+      "note": "52 个文件是 __test_fixtures__ 快照，产出物而非逻辑，价值低",
+      "fileCount": 52,
+      "readFiles": 0,
+      "status": "todo",
+      "docs": [],
+      "gap": 52,
+      "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
+    }
+  ],
+  "queue": {
+    "$comment": "批次安排见 docs/arch/audit/READ-PLAN.md；此处为机器可读摘要",
+    "batches": [
+      {
+        "n": 1,
+        "name": "渲染器核心",
+        "modules": [
+          "E1",
+          "A1",
+          "A2"
+        ],
+        "gap": 300
+      },
+      {
+        "n": 2,
+        "name": "运行时与启动",
+        "modules": [
+          "A3",
+          "A5",
+          "A7"
+        ],
+        "gap": 124
+      },
+      {
+        "n": 3,
+        "name": "TurboModule",
+        "modules": [
+          "B1"
+        ],
+        "gap": 192
+      },
+      {
+        "n": 4,
+        "name": "Android 平台层（4a/4b/4c/4d 完成）",
+        "modules": [
+          "E7",
+          "C2",
+          "C3"
+        ],
+        "gap": 627,
+        "subBatches": [
+          {
+            "n": "4a",
+            "name": "Android 根级 API",
+            "modules": [
+              "E7"
+            ],
+            "done": true,
+            "docs": [
+              "15"
+            ]
+          },
+          {
+            "n": "4b",
+            "name": "Android uimanager",
+            "modules": [
+              "C2"
+            ],
+            "todo": true,
+            "done": true,
+            "docs": [
+              "16"
+            ]
+          },
+          {
+            "n": "4c",
+            "name": "Android views + 其余",
+            "modules": [
+              "C2"
+            ],
+            "todo": true,
+            "done": true,
+            "docs": [
+              "17"
+            ]
+          },
+          {
+            "n": "4d",
+            "name": "Android JNI 胶水层",
+            "modules": [
+              "C3"
+            ],
+            "todo": true,
+            "done": true,
+            "docs": [
+              "18"
+            ]
+          }
+        ]
+      },
+      {
+        "n": 5,
+        "name": "iOS 平台层（19 文档完成）",
+        "modules": [
+          "C1",
+          "E10"
+        ],
+        "gap": 172,
+        "docs": [
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30"
+        ]
+      },
+      {
+        "n": 6,
+        "name": "样式与图形",
+        "modules": [
+          "B4",
+          "B10",
+          "B7"
+        ],
+        "gap": 157
+      },
+      {
+        "n": 7,
+        "name": "动画",
+        "modules": [
+          "B2"
+        ],
+        "gap": 155
+      },
+      {
+        "n": 8,
+        "name": "文本与图片",
+        "modules": [
+          "B3",
+          "B5",
+          "B6"
+        ],
+        "gap": 105
+      },
+      {
+        "n": 9,
+        "name": "DevTools",
+        "modules": [
+          "B9"
+        ],
+        "gap": 97
+      },
+      {
+        "n": 10,
+        "name": "计时/Flags/工具库",
+        "modules": [
+          "A6",
+          "E3",
+          "E2"
+        ],
+        "gap": 16
+      },
+      {
+        "n": 11,
+        "name": "Yoga 布局",
+        "modules": [
+          "E5"
+        ],
+        "gap": 114
+      },
+      {
+        "n": 12,
+        "name": "零散组件与库",
+        "modules": [
+          "C5",
+          "C6",
+          "E8",
+          "E9"
+        ],
+        "gap": 280
+      },
+      {
+        "n": 13,
+        "name": "剩余平台层",
+        "modules": [
+          "E6",
+          "E4"
+        ],
+        "gap": 120
+      },
+      {
+        "n": 14,
+        "name": "工具链与测试",
+        "modules": [
+          "D1",
+          "D2",
+          "D3",
+          "Z1",
+          "E11"
+        ],
+        "gap": 614
+      },
+      {
+        "n": 15,
+        "name": "收尾",
+        "modules": [
+          "A4",
+          "B8"
+        ],
+        "gap": 9
+      }
+    ],
+    "totalGap": 3082
+  },
+  "docsIndex": {
+    "07": {
+      "title": "Fabric 组件层：Props 体系与组件描述符",
+      "module": "A2",
+      "status": "partial"
+    }
+  },
+  "planDoc": "docs/arch/audit/READ-PLAN.md"
+}

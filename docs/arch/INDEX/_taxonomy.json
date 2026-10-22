@@ -1,0 +1,318 @@
+{
+  "$comment": "主题树定义 + 每篇文档的检索元数据。这是 INDEX 的单一真相源；build-index.mjs 从这里生成 docs/arch/INDEX/*.md，check-index.mjs 校验 front-matter 与本文件一致。",
+  "version": 1,
+  "domains": [
+    {
+      "id": "OV",
+      "name": "架构总览与阅读地图",
+      "intent": "第一次进入 RN 源码时先读的三篇，回答「这是什么、怎么分层、从哪读起」",
+      "subs": [
+        {
+          "id": "OV.map",
+          "name": "全局地图与分层",
+          "intent": "包结构、进程模型、分层职责"
+        },
+        {
+          "id": "OV.core",
+          "name": "核心原理与渲染全景",
+          "intent": "一次渲染从 JS 到屏幕的完整链路"
+        },
+        {
+          "id": "OV.issues",
+          "name": "问题清单总览",
+          "intent": "全库已知缺陷的汇总入口"
+        }
+      ]
+    },
+    {
+      "id": "RT",
+      "name": "运行时与启动装配",
+      "intent": "进程启动 → JS bundle 加载 → 首个可交互帧的完整时序",
+      "subs": [
+        {
+          "id": "RT.js",
+          "name": "JS 侧启动装配",
+          "intent": "setUp 系列、模块初始化顺序"
+        },
+        {
+          "id": "RT.bridge",
+          "name": "运行时与错误桥",
+          "intent": "JS↔Native 边界、错误跨界传输"
+        },
+        {
+          "id": "RT.legacy",
+          "name": "legacy 桥的 C++ 侧",
+          "intent": "Instance / NativeToJsBridge / ModuleRegistry：跨线程调用与销毁语义"
+        },
+        {
+          "id": "RT.host",
+          "name": "双端宿主集成",
+          "intent": "Android Activity/Host、iOS AppDelegate/Surface"
+        }
+      ]
+    },
+    {
+      "id": "RN",
+      "name": "渲染器与布局",
+      "intent": "Fabric 渲染管线的全部环节：组件模型、差分、布局、挂载",
+      "subs": [
+        {
+          "id": "RN.infra",
+          "name": "渲染器基础设施",
+          "intent": "注册表、声明式构建、二进制 props 格式、DOM 兼容层"
+        },
+        {
+          "id": "RN.model",
+          "name": "组件模型与 Props",
+          "intent": "ShadowNode/Props/原语词汇表"
+        },
+        {
+          "id": "RN.diff",
+          "name": "差分与注册表",
+          "intent": "组件注册、惰性注册、差分算法"
+        },
+        {
+          "id": "RN.text",
+          "name": "文本属性与富文本",
+          "intent": "TextAttributes / ParagraphAttributes / AttributedString"
+        },
+        {
+          "id": "RN.debug",
+          "name": "调试字符串机制",
+          "intent": "DebugStringConvertible、调试开关、深度与类形状"
+        },
+        {
+          "id": "RN.perf",
+          "name": "性能观察者与缓冲",
+          "intent": "PerformanceObserver 的并发与 observe 语义"
+        },
+        {
+          "id": "RN.view",
+          "name": "View 与视图扁平化",
+          "intent": "扁平化、回收池、命中测试"
+        },
+        {
+          "id": "RN.widget",
+          "name": "内置组件族",
+          "intent": "ScrollView/TextInput/Modal/Image 的组件实现"
+        },
+        {
+          "id": "RN.layout",
+          "name": "布局与数值边界",
+          "intent": "Yoga 度量、消毒、浮点相等性"
+        },
+        {
+          "id": "RN.legacy",
+          "name": "legacy View 层",
+          "intent": "被掏空的旧架构及其残留"
+        }
+      ]
+    },
+    {
+      "id": "DG",
+      "name": "错误 · 崩溃 · 诊断上报",
+      "intent": "崩溃、OOM、白屏、内存泄漏、卡顿的检测与上报全链路",
+      "subs": [
+        {
+          "id": "DG.crash",
+          "name": "崩溃采集与上传",
+          "intent": "信号捕获、符号化、上报端点"
+        },
+        {
+          "id": "DG.watch",
+          "name": "监控检测原理",
+          "intent": "各类检测器的原理与埋点"
+        },
+        {
+          "id": "DG.infra",
+          "name": "错误处理底层",
+          "intent": "断言宏、RedBox 解析、栈帧解析、JSC-safe URL"
+        },
+        {
+          "id": "DG.logbox",
+          "name": "LogBox 数据层",
+          "intent": "错误消息解析、符号化缓存、log 集合生命周期"
+        },
+        {
+          "id": "DG.route",
+          "name": "错误路由与终止",
+          "intent": "三级路由、进程终止、白屏"
+        },
+        {
+          "id": "DG.mem",
+          "name": "内存管理与压力",
+          "intent": "引用计数、泄漏检测、回收池"
+        },
+        {
+          "id": "DG.perf",
+          "name": "性能埋点",
+          "intent": "掉帧、配对契约、帧驱动"
+        }
+      ]
+    },
+    {
+      "id": "PL",
+      "name": "平台层实现",
+      "intent": "两端的具体实现；按平台/子系统定位时首选",
+      "subs": [
+        {
+          "id": "PL.ios",
+          "name": "iOS 平台层",
+          "intent": "Base / Fabric / CoreModules / Views"
+        },
+        {
+          "id": "PL.android",
+          "name": "Android 平台层",
+          "intent": "bridge / uimanager / views / modules"
+        },
+        {
+          "id": "PL.jni",
+          "name": "Android JNI 胶水层",
+          "intent": "C++↔Java 边界、异常穿透"
+        }
+      ]
+    },
+    {
+      "id": "FD",
+      "name": "公共基础层",
+      "intent": "跨平台共享的契约与工具：TurboModule、codegen、Promise、稳定 API",
+      "subs": [
+        {
+          "id": "FD.turbo",
+          "name": "TurboModule 与代码生成",
+          "intent": "spec→codegen→三端产物"
+        },
+        {
+          "id": "FD.buffer",
+          "name": "二进制 props 格式",
+          "intent": "MapBuffer 的读写两端与信任边界"
+        },
+        {
+          "id": "FD.promise",
+          "name": "异步与错误契约",
+          "intent": "Promise、rejection、异常包装"
+        },
+        {
+          "id": "FD.api",
+          "name": "稳定 API 与工具层",
+          "intent": "cxxstableapi、公共工具、数值判等"
+        }
+      ]
+    },
+    {
+      "id": "AN",
+      "name": "动画与交互",
+      "intent": "动画驱动、批次、节点族与事件系统",
+      "subs": [
+        {
+          "id": "AN.drive",
+          "name": "驱动与批次",
+          "intent": "帧驱动、驻留、复位点"
+        },
+        {
+          "id": "AN.node",
+          "name": "节点族与插值",
+          "intent": "Animated 节点、插值校验"
+        }
+      ]
+    },
+    {
+      "id": "TL",
+      "name": "构建 · 测试 · 工具链",
+      "intent": "构建系统、门禁、测试基础设施",
+      "subs": [
+        {
+          "id": "TL.build",
+          "name": "构建与发布",
+          "intent": "Gradle/CocoaPods/CMake、快照门禁"
+        },
+        {
+          "id": "TL.flags",
+          "name": "特性开关与生成门禁",
+          "intent": "flag 定义、四级档位继承、生成器与快照校验"
+        },
+        {
+          "id": "TL.release",
+          "name": "版本与发布流水线",
+          "intent": "set-version、native 版本文件、buildType 校验"
+        },
+        {
+          "id": "TL.test",
+          "name": "测试基础设施",
+          "intent": "Fantom、jest-preset、e2e 夹具"
+        }
+      ]
+    }
+  ],
+  "symptoms": {
+    "crash": {
+      "name": "崩溃 / 异常退出",
+      "hint": "进程终止、信号、未捕获异常"
+    },
+    "whitescreen": {
+      "name": "白屏 / 无内容",
+      "hint": "首帧未到达、渲染失败、组件未挂载"
+    },
+    "oom": {
+      "name": "OOM / 内存暴涨",
+      "hint": "分配失败、缓存无界、引用未释放"
+    },
+    "memleak": {
+      "name": "内存泄漏",
+      "hint": "对象存活时间超出预期、监听未注销"
+    },
+    "mempressure": {
+      "name": "内存压力 / 回收",
+      "hint": "onTrimMemory、View 池、缓存淘汰"
+    },
+    "slowstart": {
+      "name": "启动变慢",
+      "hint": "初始化顺序、串行化、缓存未命中"
+    },
+    "jank": {
+      "name": "卡顿 / 掉帧",
+      "hint": "主线程阻塞、临界区过长、重复计算"
+    },
+    "contentgrowth": {
+      "name": "内容增长过快",
+      "hint": "列表膨胀、缓存污染、重复布局测量"
+    },
+    "layout": {
+      "name": "布局错乱",
+      "hint": "度量、消毒、裁剪、RTL"
+    },
+    "gesture": {
+      "name": "手势 / 事件异常",
+      "hint": "分发、合并键、命中测试"
+    },
+    "animation": {
+      "name": "动画异常",
+      "intent": "不播放、跳变、批次错乱",
+      "hint": "驱动驻留、批次复位"
+    },
+    "text": {
+      "name": "文本测量错误",
+      "hint": "字号、换行、缓存命中"
+    },
+    "bridge": {
+      "name": "桥接性能 / 跨端调用",
+      "hint": "TurboModule、JNI、序列化"
+    },
+    "prop": {
+      "name": "属性不生效 / 不更新",
+      "hint": "脏标记、diff、属性缓存"
+    },
+    "build": {
+      "name": "构建 / 发布失败",
+      "hint": "门禁、脚本、快照"
+    },
+    "debug": {
+      "name": "调试困难 / 无从下手",
+      "hint": "缺日志、缺锚点、门禁惰性"
+    },
+    "a11y": {
+      "name": "无障碍问题",
+      "hint": "委托、语义、朗读"
+    }
+  }
+}

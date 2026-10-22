@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "崩溃捕获全链路：JS 异常到进程崩溃",
+    "subtitle": "基于 react-native @ 9b131e42 · JsErrorHandler 双管线 · iOS / Android 终局",
+    "locale": "zh-CN",
+    "output": "docs/arch/diagrams/04-crash-pipeline.html",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1060,
+      660
+    ],
+    "repository": {
+      "url": "git@github.com:react/react-native.git",
+      "revision": "9b131e42d128d8980de591409e25ad5603288105",
+      "link_mode": "local-only"
+    }
+  },
+  "participants": [
+    {
+      "id": "jsapp",
+      "type": "frontend",
+      "label": "业务代码",
+      "sublabel": "throw / Promise",
+      "sources": [
+        {
+          "path": "packages/react-native/Libraries/Core/setUpErrorHandling.js",
+          "line": 24,
+          "end_line": 35,
+          "label": "注册全局 handler"
+        }
+      ]
+    },
+    {
+      "id": "excmgr",
+      "type": "frontend",
+      "label": "错误归一化",
+      "sublabel": "ExceptionsManager",
+      "sources": [
+        {
+          "path": "packages/react-native/Libraries/Core/ExceptionsManager.js",
+          "line": 151,
+          "end_line": 178,
+          "label": "handleException"
+        }
+      ]
+    },
+    {
+      "id": "errhandler",
+      "type": "security",
+      "label": "错误中枢",
+      "sublabel": "JsErrorHandler",
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/jserrorhandler/JsErrorHandler.cpp",
+          "line": 229,
+          "end_line": 254,
+          "label": "双管线选择"
+        }
+      ]
+    },
+    {
+      "id": "platform",
+      "type": "backend",
+      "label": "平台分发",
+      "sublabel": "_onJsError",
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/jserrorhandler/JsErrorHandler.h",
+          "line": 54,
+          "end_line": 61,
+          "label": "回调契约"
+        }
+      ]
+    },
+    {
+      "id": "outcome",
+      "type": "external",
+      "label": "最终结局",
+      "sublabel": "RedBox / 崩溃",
+      "sources": [
+        {
+          "path": "packages/react-native/React/CoreModules/RCTExceptionsManager.mm",
+          "line": 57,
+          "end_line": 87,
+          "label": "reportFatal 终局链"
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "id": "m1",
+      "from": "jsapp",
+      "to": "excmgr",
+      "y": 175,
+      "label": "未捕获异常 / console.error / 未处理 rejection",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m2",
+      "from": "excmgr",
+      "to": "errhandler",
+      "y": 225,
+      "label": "RN$handleException(error, isFatal, logToConsole)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m3",
+      "from": "errhandler",
+      "to": "excmgr",
+      "y": 285,
+      "label": "JS 管线：ErrorUtils.reportFatalError，runtime 就绪时优先",
+      "variant": "return",
+      "note": "JsErrorHandler.cpp:237"
+    },
+    {
+      "id": "m4",
+      "from": "errhandler",
+      "to": "platform",
+      "y": 350,
+      "label": "C++ 管线：组装 ProcessedError，防重入与 fatal 去重",
+      "note": "errorListeners → preventDefault → 去重",
+      "variant": "security"
+    },
+    {
+      "id": "m5",
+      "from": "platform",
+      "to": "outcome",
+      "y": 415,
+      "label": "iOS 先问 HostDelegate 未接管则回落 ExceptionsManager",
+      "variant": "security"
+    },
+    {
+      "id": "m6",
+      "from": "outcome",
+      "to": "platform",
+      "y": 475,
+      "label": "iOS reload 耗尽 → RCTFatal 崩溃；Android RedBox + 销毁 Host",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "四道捕获防线",
+      "items": [
+        "ErrorUtils 全局 handler（setUpErrorHandling.js:24）",
+        "Promise rejection tracker，isFatal=false",
+        "console.error 拦截（reactConsoleErrorHandler）",
+        "C++ RuntimeExecutor 与 Scheduler onTaskError 兜底"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "两个关键开关",
+      "items": [
+        "RN$useAlwaysAvailableJSErrorHandling：跳过 JS 管线恒走 C++",
+        "C++ 管线提供 preventDefault() 与 RN$registerExceptionListener 供宿主接管"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "源码缺口",
+      "items": [
+        "无原生崩溃捕获：全仓库无 signal(SIG*) 与 NSSetUncaughtExceptionHandler",
+        "fatal 进程内只上报一次；iOS/Android 终局不一致导致崩溃率口径失真"
+      ]
+    }
+  ]
+}

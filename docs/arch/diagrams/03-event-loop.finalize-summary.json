@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "workflow",
+  "quality": "showcase",
+  "specification": {
+    "path": ".archify/workflow-event-loop-20260929-144500/candidate.json",
+    "sha256": "745ff762d859bfc3024e5709f67b242e451de1dcc22998186139f9e0a763f716",
+    "bytes": 4319
+  },
+  "artifact": {
+    "path": "docs/arch/diagrams/03-event-loop.html",
+    "sha256": "2d262bcd6bcddca8c4fb53108940d7c0849a17a6453402efe8143119cb828da9",
+    "bytes": 750340
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "docs/arch/diagrams/03-event-loop.finalize.json",
+    "summaryReceipt": "docs/arch/diagrams/03-event-loop.finalize-summary.json",
+    "browserCheckReceipt": "docs/arch/diagrams/03-event-loop.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1641
+}

@@ -1,0 +1,169 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "事件循环：一个 tick 内的任务与 UI 原子更新",
+    "subtitle": "基于 react-native @ 9b131e42 · 对齐 Web 事件循环模型的四步",
+    "locale": "zh-CN",
+    "output": "docs/arch/diagrams/03-event-loop.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:react/react-native.git",
+      "revision": "9b131e42d128d8980de591409e25ad5603288105",
+      "link_mode": "local-only"
+    }
+  },
+  "lanes": [
+    {
+      "id": "sched",
+      "label": "RuntimeScheduler 选任务"
+    },
+    {
+      "id": "exec",
+      "label": "执行任务 / 微任务"
+    },
+    {
+      "id": "render",
+      "label": "更新渲染 · 原子 flush"
+    }
+  ],
+  "phases": [
+    {
+      "id": "p1",
+      "label": "一个事件循环 tick",
+      "fromCol": 0,
+      "toCol": 3,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "select",
+    "execute",
+    "micro",
+    "render"
+  ],
+  "nodes": [
+    {
+      "id": "select",
+      "lane": "sched",
+      "col": 0,
+      "type": "backend",
+      "label": "Select a task",
+      "sublabel": "过期优先 再按优先级",
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/runtimescheduler/RuntimeScheduler_Modern.cpp",
+          "line": 277,
+          "end_line": 344,
+          "label": "runEventLoop"
+        }
+      ],
+      "width": 150,
+      "height": 52
+    },
+    {
+      "id": "execute",
+      "lane": "exec",
+      "col": 1,
+      "type": "frontend",
+      "label": "Execute the task",
+      "sublabel": "事件 handler 全部跑完",
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/runtimescheduler/RuntimeScheduler_Modern.cpp",
+          "line": 411,
+          "label": "executeTask"
+        }
+      ],
+      "width": 150,
+      "height": 52
+    },
+    {
+      "id": "micro",
+      "lane": "exec",
+      "col": 2,
+      "type": "frontend",
+      "label": "Microtask checkpoint",
+      "sublabel": "drainMicrotasks 排空",
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/runtimescheduler/RuntimeScheduler_Modern.cpp",
+          "line": 449,
+          "end_line": 479,
+          "label": "performMicrotaskCheckpoint 255 次上限"
+        }
+      ],
+      "width": 150,
+      "height": 52
+    },
+    {
+      "id": "render",
+      "lane": "render",
+      "col": 3,
+      "type": "backend",
+      "label": "Update the rendering",
+      "sublabel": "排空渲染更新 原子提交",
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/runtimescheduler/RuntimeScheduler_Modern.cpp",
+          "line": 354,
+          "end_line": 405,
+          "label": "updateRendering"
+        }
+      ],
+      "width": 150,
+      "height": 52
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "select",
+      "to": "execute",
+      "label": "选中任务",
+      "role": "main"
+    },
+    {
+      "id": "e2",
+      "from": "execute",
+      "to": "micro",
+      "label": "同步处理 state",
+      "role": "main"
+    },
+    {
+      "id": "e3",
+      "from": "micro",
+      "to": "render",
+      "label": "UI 一次性 flush",
+      "role": "main",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "原子性语义",
+      "items": [
+        "一个 task 内触发的所有 UI 变更一次性 flush，用户看不到半个 task 的结果",
+        "state 更新 → React 排 microtask → commit → useLayoutEffect 同步 setState 同微任务内完成",
+        "与 Web 事件循环对齐，React 更新、Promise、Observer 各自落到对应步骤"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "调度参数",
+      "items": [
+        "任务优先级：Immediate / UserBlocking / Normal / Low / Idle，附回调饥饿超时",
+        "微任务排空有 255 次硬上限，超出抛 runtime_error 走错误上报"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "错误影响",
+      "items": [
+        "任一 task 抛错 → clearQueues 清空整个事件循环待处理工作",
+        "这是有意为之：避免在损坏的运行时上继续调度"
+      ]
+    }
+  ]
+}

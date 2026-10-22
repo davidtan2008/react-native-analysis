@@ -1,0 +1,447 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "监控与检测能力全景：有什么、缺什么",
+    "subtitle": "基于 react-native @ 9b131e42 · 崩溃 / OOM / 白屏 / 启动 / 泄漏 / 内容增长",
+    "locale": "zh-CN",
+    "output": "docs/arch/diagrams/05-monitoring.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:react/react-native.git",
+      "revision": "9b131e42d128d8980de591409e25ad5603288105",
+      "link_mode": "local-only"
+    }
+  },
+  "components": [
+    {
+      "id": "crash",
+      "type": "security",
+      "label": "崩溃",
+      "sublabel": "四层兜底 双管线",
+      "tag": "完整可用",
+      "pos": [
+        80,
+        40
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/jserrorhandler/JsErrorHandler.cpp",
+          "line": 229,
+          "end_line": 254,
+          "label": "双管线选择"
+        }
+      ]
+    },
+    {
+      "id": "crashout",
+      "type": "database",
+      "label": "RN$handleException",
+      "sublabel": "分发到宿主接管",
+      "pos": [
+        350,
+        40
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/runtime/ReactInstance.cpp",
+          "line": 529,
+          "end_line": 568,
+          "label": "RN$handleException 绑定"
+        }
+      ]
+    },
+    {
+      "id": "startup",
+      "type": "backend",
+      "label": "启动变慢",
+      "sublabel": "ReactMarker 打点",
+      "tag": "部分覆盖",
+      "pos": [
+        80,
+        140
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/cxxreact/ReactMarker.h",
+          "line": 19,
+          "end_line": 37,
+          "label": "17 个 marker"
+        }
+      ]
+    },
+    {
+      "id": "startupout",
+      "type": "database",
+      "label": "rnStartupTiming",
+      "sublabel": "唯一启动数据出口",
+      "pos": [
+        350,
+        140
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/nativemodule/webperformance/NativePerformance.cpp",
+          "line": 276,
+          "end_line": 303,
+          "label": "读 StartupLogger"
+        }
+      ]
+    },
+    {
+      "id": "jank",
+      "type": "backend",
+      "label": "卡顿 / longtask",
+      "sublabel": "50ms 阈值上报",
+      "tag": "仅 DevTools",
+      "pos": [
+        80,
+        240
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/performance/timeline/PerformanceEntryReporter.h",
+          "line": 29,
+          "end_line": 33,
+          "label": "LONG_TASK 阈值"
+        }
+      ]
+    },
+    {
+      "id": "jankout",
+      "type": "database",
+      "label": "INP 推送",
+      "sublabel": "CdpMetricsReporter",
+      "pos": [
+        350,
+        240
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/performance/cdpmetrics/CdpMetricsReporter.cpp",
+          "line": 1,
+          "end_line": 1,
+          "label": "INP 上报"
+        }
+      ]
+    },
+    {
+      "id": "oom",
+      "type": "backend",
+      "label": "OOM / 内存压力",
+      "sublabel": "onTrimMemory → GC",
+      "tag": "仅响应",
+      "pos": [
+        560,
+        40
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/runtime/ReactInstance.cpp",
+          "line": 652,
+          "end_line": 721,
+          "label": "压力等级决策"
+        }
+      ]
+    },
+    {
+      "id": "memout",
+      "type": "database",
+      "label": "performance.memory",
+      "sublabel": "jsHeapSizeLimit 恒 null",
+      "pos": [
+        830,
+        40
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/src/private/webapis/performance/Performance.js",
+          "line": 96,
+          "end_line": 118,
+          "label": "堆信息"
+        }
+      ]
+    },
+    {
+      "id": "leak",
+      "type": "backend",
+      "label": "内存泄漏",
+      "sublabel": "LeakChecker 弱引用",
+      "tag": "仅 Debug",
+      "pos": [
+        560,
+        140
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/leakchecker/LeakChecker.cpp",
+          "line": 25,
+          "end_line": 58,
+          "label": "stopSurface 检漏"
+        }
+      ]
+    },
+    {
+      "id": "jsi",
+      "type": "database",
+      "label": "JSI 内存接口",
+      "sublabel": "未被 RN 调用",
+      "tag": "空置",
+      "pos": [
+        830,
+        140
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/jsi/jsi/instrumentation.h",
+          "line": 26,
+          "end_line": 129,
+          "label": "快照接口无调用点"
+        }
+      ]
+    },
+    {
+      "id": "whitescreen",
+      "type": "backend",
+      "label": "白屏",
+      "sublabel": "无看门狗",
+      "tag": "不存在",
+      "pos": [
+        560,
+        240
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/scheduler/SurfaceHandler.cpp",
+          "line": 37,
+          "end_line": 62,
+          "label": "Running 早于首帧"
+        }
+      ]
+    },
+    {
+      "id": "contentappear",
+      "type": "backend",
+      "label": "CONTENT_APPEARED",
+      "sublabel": "最接近首帧的信号",
+      "tag": "仅 Android",
+      "pos": [
+        830,
+        240
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactRootView.java",
+          "line": 525,
+          "end_line": 529,
+          "label": "onViewAdded 打点"
+        }
+      ]
+    },
+    {
+      "id": "growth",
+      "type": "backend",
+      "label": "内容增长过快",
+      "sublabel": "虚拟化窗口限流",
+      "tag": "无监控",
+      "pos": [
+        80,
+        340
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/virtualized-lists/Lists/VirtualizeUtils.js",
+          "line": 96,
+          "end_line": 179,
+          "label": "窗口与批次上限"
+        }
+      ]
+    },
+    {
+      "id": "fillrate",
+      "type": "database",
+      "label": "FillRateHelper",
+      "sublabel": "空白检测 默认关闭",
+      "tag": "空置",
+      "pos": [
+        350,
+        340
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/virtualized-lists/Lists/FillRateHelper.js",
+          "line": 17,
+          "end_line": 83,
+          "label": "_sampleRate 为 null"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "监控主题与数据出口成对",
+      "wraps": [
+        "crash",
+        "crashout",
+        "startup",
+        "startupout",
+        "jank",
+        "jankout",
+        "oom",
+        "memout",
+        "leak",
+        "jsi",
+        "whitescreen",
+        "contentappear",
+        "growth",
+        "fillrate"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "c1",
+      "from": "crash",
+      "to": "crashout",
+      "label": "结构化上报",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "c2",
+      "from": "startup",
+      "to": "startupout",
+      "label": "打点回流",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "c3",
+      "from": "jank",
+      "to": "jankout",
+      "label": "指标推送",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "c4",
+      "from": "oom",
+      "to": "memout",
+      "label": "堆数值",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "c5",
+      "from": "leak",
+      "to": "jsi",
+      "label": "本可调用",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "c6",
+      "from": "whitescreen",
+      "to": "contentappear",
+      "label": "无直接检测",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "c7",
+      "from": "growth",
+      "to": "fillrate",
+      "label": "空白度量（关）",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "真正可用的",
+      "items": [
+        "崩溃：JS 异常全链路分层兜底，DEV 有 LogBox / RedBox，PROD 分发到宿主",
+        "启动：ReactMarker 17 个打点 + performance.rnStartupTiming 数据出口"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "部分覆盖",
+      "items": [
+        "OOM：只能被动响应系统 onTrimMemory，无堆上限与 OOM 预测（jsHeapSizeLimit 恒 null）",
+        "卡顿：longtask 50ms 阈值 + Event Timing，仅推 DevTools 无持久化",
+        "泄漏：LeakChecker 仅 Debug 编译，且漏检最后一个 surface"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "明确缺失",
+      "items": [
+        "白屏：无任何检测或看门狗，Surface 在首帧前即置 Running",
+        "内容增长：无速率监控，_cellMetrics 在唯一 key 场景无界增长",
+        "原生崩溃：无 signal / uncaught-exception 钩子，完全交给系统"
+      ]
+    }
+  ]
+}

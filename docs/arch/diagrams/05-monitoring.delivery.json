@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "35228da2-bf00-41ae-82cd-db2a84821876",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": ".archify/architecture-monitoring-20260929-144500/candidate.json",
+  "output": "docs/arch/diagrams/05-monitoring.html",
+  "specification": {
+    "sha256": "7f72ddc2863ff8413cf56e25b84c6d8e8552f0ae8fb7efc9a26b2f6832cfb2fd",
+    "bytes": 9935
+  },
+  "artifact": {
+    "sha256": "3bab87c15eff84fd090b3036e3efb400ac3f72b969e866848c1212c0063d7b56",
+    "bytes": 769390
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "382718d7-4539-4776-9e3a-0594bddad769",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": ".archify/architecture-runtime-layers-20260929-140200/candidate.json",
+  "output": "docs/arch/diagrams/01-runtime-layers.html",
+  "specification": {
+    "sha256": "1eea06439dbb340972a3ab0cfc726936f87935aca0a8547e6ac1b83be0b24643",
+    "bytes": 9271
+  },
+  "artifact": {
+    "sha256": "eadf47f2880695eb7d145afcb21cee47e7075266f5834c2e773b92ab9f7a2692",
+    "bytes": 775359
+  }
+}

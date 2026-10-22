@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+
+# check-index.mjs 执行 build-index.mjs 时留下的临时目录
+.archify/indexchk-*
+
+# 编辑器 / 工具
+.idea/
+.vscode/
+*.swp

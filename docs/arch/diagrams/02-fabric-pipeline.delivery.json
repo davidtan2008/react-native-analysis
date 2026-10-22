@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "8ad7a609-f0c8-46d5-99d0-ee55a6599caf",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": ".archify/workflow-fabric-pipeline-20260929-143000/candidate.json",
+  "output": "docs/arch/diagrams/02-fabric-pipeline.html",
+  "specification": {
+    "sha256": "65176da46988e661fc6b8406ea0b256532a13b7313b33b66aae697943b067f9f",
+    "bytes": 6721
+  },
+  "artifact": {
+    "sha256": "0b02989bf8aadf064fe53e12fa4ba5f42ed0c8a98ef203bf9929f71cd8697794",
+    "bytes": 759786
+  }
+}

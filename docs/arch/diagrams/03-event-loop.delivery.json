@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "4cc38097-c5fe-4ca2-8663-59327ee0244b",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": ".archify/workflow-event-loop-20260929-144500/candidate.json",
+  "output": "docs/arch/diagrams/03-event-loop.html",
+  "specification": {
+    "sha256": "745ff762d859bfc3024e5709f67b242e451de1dcc22998186139f9e0a763f716",
+    "bytes": 4319
+  },
+  "artifact": {
+    "sha256": "2d262bcd6bcddca8c4fb53108940d7c0849a17a6453402efe8143119cb828da9",
+    "bytes": 750340
+  }
+}

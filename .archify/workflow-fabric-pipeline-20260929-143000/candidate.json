@@ -1,0 +1,285 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Fabric 渲染管线：setState 到原生视图挂载",
+    "subtitle": "基于 react-native @ 9b131e42 · ShadowTree 提交到 MountingCoordinator 差分挂载",
+    "locale": "zh-CN",
+    "output": "docs/arch/diagrams/02-fabric-pipeline.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:react/react-native.git",
+      "revision": "9b131e42d128d8980de591409e25ad5603288105",
+      "link_mode": "local-only"
+    }
+  },
+  "lanes": [
+    {
+      "id": "js",
+      "label": "JS 线程 · React"
+    },
+    {
+      "id": "sched",
+      "label": "事件循环 · RuntimeScheduler"
+    },
+    {
+      "id": "cpp",
+      "label": "C++ 核心 · ShadowTree"
+    },
+    {
+      "id": "main",
+      "label": "主线程 · 挂载"
+    },
+    {
+      "id": "plat",
+      "label": "平台原生视图"
+    }
+  ],
+  "phases": [
+    {
+      "id": "p1",
+      "label": "渲染与提交",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "p2",
+      "label": "差分与挂载",
+      "fromCol": 2,
+      "toCol": 5,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "setstate",
+    "commit",
+    "createnode",
+    "shadowcommit",
+    "schedule",
+    "pull",
+    "mountitem"
+  ],
+  "nodes": [
+    {
+      "id": "setstate",
+      "lane": "js",
+      "col": 0,
+      "type": "frontend",
+      "label": "setState / render",
+      "sublabel": "reconciler 产出元素",
+      "sources": [
+        {
+          "path": "packages/react-native/Libraries/ReactNative/AppRegistryImpl.js",
+          "line": 197,
+          "end_line": 216,
+          "label": "runApplication"
+        }
+      ],
+      "width": 152,
+      "height": 54
+    },
+    {
+      "id": "commit",
+      "lane": "js",
+      "col": 1,
+      "type": "frontend",
+      "label": "microtask checkpoint",
+      "sublabel": "HostInstance 写回",
+      "sources": [
+        {
+          "path": "packages/react-native/src/setup-env.js",
+          "line": 22,
+          "label": "渲染器装配入口"
+        }
+      ],
+      "width": 152,
+      "height": 54
+    },
+    {
+      "id": "createnode",
+      "lane": "cpp",
+      "col": 2,
+      "type": "backend",
+      "label": "createNode",
+      "sublabel": "UIManager 写 ShadowNode",
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/uimanager/UIManager.cpp",
+          "line": 65,
+          "end_line": 71,
+          "label": "UIManager::createNode"
+        }
+      ],
+      "width": 152,
+      "height": 54
+    },
+    {
+      "id": "shadowcommit",
+      "lane": "cpp",
+      "col": 3,
+      "type": "backend",
+      "label": "ShadowTree::commit",
+      "sublabel": "Telemetry 分段计时",
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/mounting/ShadowTree.cpp",
+          "line": 336,
+          "end_line": 356,
+          "label": "tryCommit"
+        }
+      ],
+      "width": 152,
+      "height": 54
+    },
+    {
+      "id": "schedule",
+      "lane": "sched",
+      "col": 4,
+      "type": "backend",
+      "label": "update the rendering",
+      "sublabel": "排空渲染更新队列",
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/runtimescheduler/RuntimeScheduler_Modern.cpp",
+          "line": 204,
+          "end_line": 211,
+          "label": "scheduleRenderingUpdate 无超时"
+        }
+      ],
+      "width": 152,
+      "height": 54
+    },
+    {
+      "id": "pull",
+      "lane": "main",
+      "col": 4,
+      "type": "backend",
+      "label": "pullTransaction",
+      "sublabel": "差分 ShadowViewMutation",
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/mounting/MountingCoordinator.cpp",
+          "line": 71,
+          "end_line": 94,
+          "label": "pullTransaction"
+        }
+      ],
+      "width": 152,
+      "height": 54
+    },
+    {
+      "id": "mountitem",
+      "lane": "main",
+      "col": 5,
+      "type": "backend",
+      "label": "MountItem 批量执行",
+      "sublabel": "initiateTransaction",
+      "sources": [
+        {
+          "path": "packages/react-native/React/Fabric/Mounting/RCTMountingManager.mm",
+          "line": 234,
+          "end_line": 250,
+          "label": "initiateTransaction"
+        }
+      ],
+      "width": 152,
+      "height": 54
+    },
+    {
+      "id": "views",
+      "lane": "plat",
+      "col": 5,
+      "type": "external",
+      "label": "UIView / View 更新",
+      "sublabel": "reportMount 广播",
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/uimanager/UIManager.cpp",
+          "line": 691,
+          "end_line": 713,
+          "label": "UIManager::reportMount"
+        }
+      ],
+      "width": 152,
+      "height": 54
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "setstate",
+      "to": "commit",
+      "label": "排 microtask",
+      "role": "main"
+    },
+    {
+      "id": "e2",
+      "from": "commit",
+      "to": "createnode",
+      "label": "JSI 写回",
+      "role": "main"
+    },
+    {
+      "id": "e3",
+      "from": "createnode",
+      "to": "shadowcommit",
+      "label": "commit 产出 revision",
+      "role": "main"
+    },
+    {
+      "id": "e4",
+      "from": "shadowcommit",
+      "to": "schedule",
+      "label": "uiManagerDidFinishTransaction",
+      "role": "main"
+    },
+    {
+      "id": "e5",
+      "from": "schedule",
+      "to": "pull",
+      "label": "渲染更新 drain",
+      "role": "main"
+    },
+    {
+      "id": "e6",
+      "from": "pull",
+      "to": "mountitem",
+      "label": "ShadowViewMutation 列表",
+      "role": "main"
+    },
+    {
+      "id": "e7",
+      "from": "mountitem",
+      "to": "views",
+      "label": "应用挂载",
+      "role": "main",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "线程切换点",
+      "items": [
+        "JS 线程：render、microtask、写回 HostInstance",
+        "主线程：pullTransaction 差分与原生挂载，UI 更新在事件循环 update 阶段原子 flush"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "内存保护",
+      "items": [
+        "MountingCoordinator 的 pending revision 最多保留 1 个，旧的在 pull 时销毁",
+        "commitEmptyTree 提交空树，触发所有 view 的销毁副作用"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "源码缺口",
+      "items": [
+        "单次 diff 的 ShadowViewMutation 列表无上限、不分片",
+        "scheduleRenderingUpdate 无超时无取消，渲染更新只在下一 tick 排空"
+      ]
+    }
+  ]
+}

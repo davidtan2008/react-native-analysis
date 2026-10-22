@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "sequence",
+  "quality": "showcase",
+  "specification": {
+    "path": ".archify/sequence-crash-pipeline-20260929-141000/candidate.json",
+    "sha256": "4da9704aa8a834d3bd209b89ee93de1e44f59490a26c57994e2832a37b07045a",
+    "bytes": 4612
+  },
+  "artifact": {
+    "path": "docs/arch/diagrams/04-crash-pipeline.html",
+    "sha256": "4234ce95b0c19c08a5ad8b4d1fb73651b84f3527f47d4435ac90b7a6621eceb2",
+    "bytes": 752969
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "docs/arch/diagrams/04-crash-pipeline.finalize.json",
+    "summaryReceipt": "docs/arch/diagrams/04-crash-pipeline.finalize-summary.json",
+    "browserCheckReceipt": "docs/arch/diagrams/04-crash-pipeline.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1712
+}

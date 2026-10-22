@@ -1,0 +1,460 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "React Native 运行时分层与核心组件",
+    "subtitle": "基于 react-native @ 9b131e42 · 新架构（Fabric / Bridgeless）",
+    "locale": "zh-CN",
+    "output": "docs/arch/diagrams/01-runtime-layers.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:react/react-native.git",
+      "revision": "9b131e42d128d8980de591409e25ad5603288105",
+      "link_mode": "local-only"
+    }
+  },
+  "components": [
+    {
+      "id": "app",
+      "type": "frontend",
+      "label": "业务代码 / AppRegistry",
+      "sublabel": "registerComponent · runApplication",
+      "pos": [
+        390,
+        40
+      ],
+      "size": [
+        250,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/Libraries/ReactNative/AppRegistryImpl.js",
+          "line": 197,
+          "end_line": 216,
+          "label": "runApplication"
+        }
+      ]
+    },
+    {
+      "id": "renderer",
+      "type": "frontend",
+      "label": "React 渲染器",
+      "sublabel": "ReactFabric · Scheduler",
+      "pos": [
+        390,
+        144
+      ],
+      "size": [
+        250,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/src/setup-env.js",
+          "line": 22,
+          "label": "渲染器启动装配"
+        }
+      ]
+    },
+    {
+      "id": "runtime",
+      "type": "backend",
+      "label": "ReactInstance (C++)",
+      "sublabel": "jsi::Runtime · RuntimeScheduler",
+      "tag": "+ TimerManager",
+      "pos": [
+        390,
+        248
+      ],
+      "size": [
+        250,
+        92
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/runtime/ReactInstance.h",
+          "line": 93,
+          "end_line": 95,
+          "label": "jsErrorHandler_ 成员"
+        }
+      ]
+    },
+    {
+      "id": "uimanager",
+      "type": "backend",
+      "label": "UIManager + ShadowTree",
+      "sublabel": "ShadowNode · Yoga · commit",
+      "pos": [
+        390,
+        380
+      ],
+      "size": [
+        250,
+        78
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/uimanager/UIManager.cpp",
+          "line": 65,
+          "end_line": 71,
+          "label": "UIManager::createNode"
+        }
+      ]
+    },
+    {
+      "id": "mount",
+      "type": "backend",
+      "label": "MountingCoordinator",
+      "sublabel": "diff → MountItem 挂载",
+      "pos": [
+        390,
+        498
+      ],
+      "size": [
+        250,
+        68
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/renderer/mounting/MountingCoordinator.cpp",
+          "line": 71,
+          "end_line": 94,
+          "label": "pullTransaction"
+        }
+      ]
+    },
+    {
+      "id": "platform",
+      "type": "external",
+      "label": "平台原生视图",
+      "sublabel": "UIView / android.view.View",
+      "pos": [
+        390,
+        606
+      ],
+      "size": [
+        250,
+        68
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/React/Fabric/Mounting/RCTMountingManager.mm",
+          "line": 234,
+          "end_line": 250,
+          "label": "initiateTransaction"
+        }
+      ]
+    },
+    {
+      "id": "tmm",
+      "type": "backend",
+      "label": "TurboModule",
+      "sublabel": "JS spec 代码生成的原生模块",
+      "pos": [
+        70,
+        258
+      ],
+      "size": [
+        210,
+        68
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/nativemodule/core/ReactCommon/TurboModule.h",
+          "line": 49,
+          "label": "class TurboModule"
+        }
+      ]
+    },
+    {
+      "id": "jsi",
+      "type": "backend",
+      "label": "JSI 抽象层",
+      "sublabel": "jsi::Runtime · C++ 直连引擎",
+      "pos": [
+        70,
+        390
+      ],
+      "size": [
+        210,
+        68
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/jsi/jsi/jsi.h",
+          "line": 705,
+          "label": "class Runtime"
+        }
+      ]
+    },
+    {
+      "id": "engine",
+      "type": "backend",
+      "label": "Hermes / JSC",
+      "sublabel": "运行时实现",
+      "pos": [
+        70,
+        498
+      ],
+      "size": [
+        210,
+        68
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/react/runtime/hermes/HermesInstance.cpp",
+          "line": 61,
+          "end_line": 66,
+          "label": "TTI 感知 GC 调优"
+        }
+      ]
+    },
+    {
+      "id": "err",
+      "type": "security",
+      "label": "JsErrorHandler",
+      "sublabel": "四层兜底 · 双管线 · ProcessedError",
+      "pos": [
+        770,
+        150
+      ],
+      "size": [
+        210,
+        92
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/jserrorhandler/JsErrorHandler.cpp",
+          "line": 229,
+          "end_line": 254,
+          "label": "双管线选择"
+        }
+      ]
+    },
+    {
+      "id": "marker",
+      "type": "backend",
+      "label": "ReactMarker",
+      "sublabel": "启动打点 · StartupLogger",
+      "pos": [
+        770,
+        300
+      ],
+      "size": [
+        210,
+        78
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/cxxreact/ReactMarker.h",
+          "line": 19,
+          "end_line": 37,
+          "label": "17 个 marker 枚举"
+        }
+      ]
+    },
+    {
+      "id": "inspector",
+      "type": "backend",
+      "label": "jsinspector",
+      "sublabel": "HostTarget · CDP Agent",
+      "pos": [
+        770,
+        436
+      ],
+      "size": [
+        210,
+        68
+      ],
+      "sources": [
+        {
+          "path": "packages/react-native/ReactCommon/jsinspector-modern/HostTarget.cpp",
+          "line": 248,
+          "end_line": 264,
+          "label": "registerInstance"
+        }
+      ]
+    },
+    {
+      "id": "devtoolsui",
+      "type": "external",
+      "label": "DevTools 前端",
+      "sublabel": "Metro debugger-frontend",
+      "tag": "仅 Debug",
+      "pos": [
+        770,
+        562
+      ],
+      "size": [
+        210,
+        68
+      ],
+      "sources": [
+        {
+          "path": "packages/dev-middleware/src/inspector-proxy/InspectorProxy.js",
+          "line": 42,
+          "end_line": 47,
+          "label": "WebSocket 路由"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "C++ 渲染与运行时核心",
+      "wraps": [
+        "runtime",
+        "uimanager",
+        "mount"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "JS 引擎与 JSI 抽象",
+      "wraps": [
+        "jsi",
+        "engine"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "跨端 C++ · 错误 / 打点 / 调试",
+      "wraps": [
+        "err",
+        "marker",
+        "inspector"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "c-app-renderer",
+      "from": "app",
+      "to": "renderer",
+      "label": "render / setState",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-renderer-runtime",
+      "from": "renderer",
+      "to": "runtime",
+      "label": "JSI HostInstance"
+    },
+    {
+      "id": "c-runtime-uimanager",
+      "from": "runtime",
+      "to": "uimanager",
+      "label": "commit · microtask checkpoint"
+    },
+    {
+      "id": "c-uimanager-mount",
+      "from": "uimanager",
+      "to": "mount",
+      "label": "ShadowTreeRevision"
+    },
+    {
+      "id": "c-mount-platform",
+      "from": "mount",
+      "to": "platform",
+      "label": "MountItem · 主线程",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-runtime-tmm",
+      "from": "runtime",
+      "to": "tmm",
+      "label": "TurboModule 调用",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "c-runtime-jsi",
+      "from": "runtime",
+      "to": "jsi",
+      "label": "持有 jsi::Runtime",
+      "fromSide": "left",
+      "toSide": "top"
+    },
+    {
+      "id": "c-jsi-engine",
+      "from": "jsi",
+      "to": "engine",
+      "label": "运行时实现",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "c-runtime-err",
+      "from": "runtime",
+      "to": "err",
+      "label": "handleError · ProcessedError",
+      "variant": "security",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "c-runtime-marker",
+      "from": "runtime",
+      "to": "marker",
+      "label": "logMarker",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "c-runtime-inspector",
+      "from": "runtime",
+      "to": "inspector",
+      "label": "InstanceTarget 注册",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "c-inspector-devtools",
+      "from": "inspector",
+      "to": "devtoolsui",
+      "label": "WebSocket · Tracing.dataCollected",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "主路径",
+      "items": [
+        "自上而下单向：业务代码 → 渲染器 → ReactInstance → UIManager → 挂载 → 平台视图",
+        "UIManager→挂载 的 pullTransaction 在主线程执行，产出 ShadowViewMutation 列表"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "线程与执行域",
+      "items": [
+        "ReactInstance 及其 RuntimeScheduler 运行在唯一 JS 线程",
+        "MountingCoordinator::pullTransaction 与平台挂载在主线程 / UI 线程",
+        "JSI 是 C++ 直连引擎的边界，取代了旧 Bridge 的 JSON 序列化"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "横切能力（右侧）",
+      "items": [
+        "JsErrorHandler 是全平台唯一错误中枢，产出统一 ProcessedError 数据契约",
+        "ReactMarker::logTaggedMarkerImpl 是全局单槽位，App 监听启动打点会覆盖 RN 自身记录器",
+        "jsinspector 提供完整 CDP 通道，但 Release 默认关闭（fuseboxEnabledRelease=false）"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "源码缺口",
+      "items": [
+        "Hermes 引擎在 ReactCommon 之外，TTI 感知的 GC 策略 allocInOldGenBeforeTTI 两端均硬编码为 false",
+        "Fabric 只向 iOS 暴露 Preparing / Running 两个聚合阶段，首帧渲染完成的细分阶段从未实现"
+      ]
+    }
+  ]
+}
