@@ -13245,6 +13245,183 @@ addDocClaim('D217', '文档给出了哈希契约违反在 AttributedString 一�
   addDocClaim('D276', '80 文档写明 flow/global.js 的索引器打穿类型面', /索引器.{0,8}打穿|打穿整份 `declare var global`/, {min: 1});
 }
 
+
+// ────────────────────────────────────────────────────────────────────────
+// 81 文档 · polyfills / new-app-screen / react-native-test-library
+//   PLY-1 … PLY-9 · NAP-1 … NAP-7 · TLB-1 … TLB-7
+// ────────────────────────────────────────────────────────────────────────
+{
+  const rd = p => fs.readFileSync(path.join(REPO, p), 'utf8');
+  const polyfillsIndex = rd('packages/polyfills/index.js');
+  const polyfillsConsole = rd('packages/polyfills/console.js');
+  const errorGuard = rd('packages/polyfills/error-guard.js');
+  const metroCfg = rd('packages/metro-config/src/index.flow.js');
+  const jestSetup = rd('packages/jest-preset/jest/setup.js');
+  const nap = rd('packages/new-app-screen/src/NewAppScreen.js');
+  const napDts = rd('packages/new-app-screen/src/index.d.ts');
+  const napPkg = JSON.parse(rd('packages/new-app-screen/package.json'));
+  const rnPkg = JSON.parse(rd('packages/react-native/package.json'));
+  const tlAppleJs = rd('packages/react-native-test-library/apple/index.js');
+  const tlAppleMm = rd('packages/react-native-test-library/apple/TestLibraryApple.mm');
+  const tlCommonMm = rd('packages/react-native-test-library/common/TestLibraryCommon.mm');
+  const tlCommonJs = rd('packages/react-native-test-library/common/index.js');
+  const tlCommonPkg = JSON.parse(rd('packages/react-native-test-library/common/package.json'));
+  const tlApplePkg = JSON.parse(rd('packages/react-native-test-library/apple/package.json'));
+  const tlAppleCfg = rd('packages/react-native-test-library/apple/react-native.config.js');
+  const tlCommonCfg = rd('packages/react-native-test-library/common/react-native.config.js');
+  const tlTrap = rd('packages/react-native-test-library/apple/__tests__/TestLibraryAppleTests.cpp');
+  const tableItest = rd('packages/polyfills/__tests__/consoleTable-itest.js');
+  const getDevServerSrc = rd('packages/react-native/Libraries/Core/Devtools/getDevServer.js');
+  const countOf = (h, n) => h.split(n).length - 1;
+
+  // ── PLY-1：两条消费路径 ──
+  add('C662', 'PLY-1：polyfills 有两个消费者 —— metro-config 通过 getPolyfills() 注入 index.js 返回的 console.js + error-guard.js 两个文件；jest-preset 只直接 import error-guard 子路径，所以 Jest 里的 console.* 是 Node 原生实现',
+    'metro 注入 2 个文件 + jest 只 import error-guard',
+    'index.js require.resolve 数:' + countOf(polyfillsIndex, 'require.resolve(') +
+      ' / metro getPolyfills:' + metroCfg.includes('getPolyfills') +
+      ' / jest 只 import error-guard:' + jestSetup.includes('js-polyfills/error-guard') +
+      ' / jest import console.js:' + jestSetup.includes('js-polyfills/console'),
+    countOf(polyfillsIndex, 'require.resolve(') === 2 &&
+      polyfillsIndex.includes("require.resolve('./console.js')") &&
+      polyfillsIndex.includes("require.resolve('./error-guard.js')") &&
+      metroCfg.includes("getPolyfills: () => require('@react-native/js-polyfills')()") &&
+      jestSetup.includes("import '@react-native/js-polyfills/error-guard';") &&
+      !jestSetup.includes('js-polyfills/console'));
+
+  // ── PLY-2 / PLY-3：guard 的两个行为 ──
+  add('C663', 'PLY-2 / PLY-3：applyWithGuardIfNeeded 的 else 分支不 return（调用 applyWithGuard 后落到末尾的 return null），所以不在 guard 内时返回值恒为 null；默认 _globalHandler 直接 throw，使 applyWithGuard 的 catch→reportError 重新抛出异常',
+    'else 分支无 return + 默认 handler throw',
+    'else 分支无 return:' + /else \{\s*ErrorUtils\.applyWithGuard\(fun, context, args\);\s*\}/.test(errorGuard) +
+      ' / 默认 handler throw:' + /\(e: unknown, isFatal: boolean\) => \{\s*throw e;\s*\}/.test(errorGuard) +
+      ' / catch 里 reportError:' + /catch \(e\) \{\s*ErrorUtils\.reportError\(e\);/.test(errorGuard) +
+      ' / flag 名:' + errorGuard.includes('global.RN$useAlwaysAvailableJSErrorHandling === true'),
+    /else \{\s*ErrorUtils\.applyWithGuard\(fun, context, args\);\s*\}/.test(errorGuard) &&
+      /catch \(e\) \{\s*ErrorUtils\.reportError\(e\);/.test(errorGuard) &&
+      /\(e: unknown, isFatal: boolean\) => \{\s*throw e;\s*\}/.test(errorGuard) &&
+      errorGuard.includes('global.RN$useAlwaysAvailableJSErrorHandling === true') &&
+      errorGuard.includes('return null;'));
+
+  // ── PLY-4 / PLY-5 / PLY-6 ──
+  add('C664', 'PLY-4 / PLY-5 / PLY-6：formatValue 有 200 次全树共享上限；console 对象把 stub 放在 originalConsole 展开之前、把 error/log/table 等放在之后（宿主优先 vs 无条件覆盖）；group 用 U+2510 而 groupCollapsed 与 groupEnd 都用 U+2518',
+    '200 上限 + 展开顺序 + 字形错配',
+    '200 上限:' + polyfillsConsole.includes('ctx.formatValueCalls > 200') +
+      ' / stub 在展开前:' + polyfillsConsole.includes('time: stub,') +
+      ' / error 在展开后:' + /\.\.\.\(originalConsole \?\? \{\}\),\s*\n\s*error: getNativeLogFunction/.test(polyfillsConsole) +
+      ' / GROUP_OPEN/CLOSE:' + (polyfillsConsole.includes("const GROUP_OPEN = '\\u2510';") && polyfillsConsole.includes("const GROUP_CLOSE = '\\u2518';")) +
+      ' / groupCollapsed 用 CLOSE:' + /groupFormat\(GROUP_CLOSE, label\)/.test(polyfillsConsole),
+    polyfillsConsole.includes('ctx.formatValueCalls++') &&
+      polyfillsConsole.includes('ctx.formatValueCalls > 200') &&
+      polyfillsConsole.includes('time: stub,') &&
+      /\.\.\.\(originalConsole \?\? \{\}\),\s*\n\s*error: getNativeLogFunction/.test(polyfillsConsole) &&
+      polyfillsConsole.includes("const GROUP_OPEN = '\\u2510';") &&
+      polyfillsConsole.includes("const GROUP_CLOSE = '\\u2518';") &&
+      /groupFormat\(GROUP_CLOSE, label\)/.test(polyfillsConsole) &&
+      polyfillsConsole.includes('groupFormat(GROUP_CLOSE), LOG_LEVELS.info'));
+
+  // ── PLY-7 / PLY-8：表格 ──
+  add('C665', 'PLY-7 / PLY-8：console.table 的列宽用 k.length / cellStr.length（UTF-16 码元）而非显示宽度；测试期望字符串里只有两个单宽非 ASCII 字符（U+0192 f-hook 与 U+2026 省略号），没有全角用例；空表走 nativeLoggingHook 输出空字符串',
+    'length 定宽 + 无全角用例 + 空表空串',
+    'Math.max(cellStr.length):' + polyfillsConsole.includes('Math.max(columnWidths[i], cellStr.length)') +
+      ' / 空表空串:' + polyfillsConsole.includes("global.nativeLoggingHook('', LOG_LEVELS.info)") +
+      ' / itest 非 ASCII 集合:' + [...new Set(tableItest.match(/[^\x00-\x7F]/g) ?? [])].join(''),
+    polyfillsConsole.includes('columnWidths[i] = k.length;') &&
+      polyfillsConsole.includes('Math.max(columnWidths[i], cellStr.length)') &&
+      polyfillsConsole.includes("global.nativeLoggingHook('', LOG_LEVELS.info)") &&
+      !/[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/.test(tableItest) &&
+      tableItest.includes('\u0192') &&
+      tableItest.includes('\u2026'));
+
+  // ── PLY-9：静态检查豁免 ──
+  add('C666', 'PLY-9：console.js 同时带 @noflow 与 @nolint（720 行，占本包 863 行的 83.4%），文件内的 eslint-disable 因此冗余；README 声称提供 Promise/timers 垫片，但 index.js 只返回两个文件，且这两文件里 Promise 出现 0 次',
+    '@noflow + @nolint + Promise 0 次',
+    'console.js 行数:' + polyfillsConsole.split('\n').length +
+      ' / @noflow:' + polyfillsConsole.includes('@noflow') +
+      ' / @nolint:' + polyfillsConsole.includes('@nolint') +
+      ' / Promise 出现:' + countOf(polyfillsConsole + errorGuard, 'Promise') +
+      ' / README 提 Promise:' + rd('packages/polyfills/README.md').includes('`Promise`'),
+    polyfillsConsole.includes('@noflow') &&
+      polyfillsConsole.includes('@nolint') &&
+      polyfillsConsole.split('\n').length > 700 &&
+      countOf(polyfillsConsole + errorGuard, 'Promise') === 0 &&
+      rd('packages/polyfills/README.md').includes('`Promise`'));
+
+  // ── NAP-1 / NAP-2 ──
+  add('C667', 'NAP-1 / NAP-2：NewAppScreen 用 getRuntimeProperties?.()[\'OSS Release Version\'] —— 可选链只保护调用，结果直接索引（缺方法时 undefined 被索引）；同时该组件 import 了 react-native/unstable-internals-do-not-use，而该子路径在 exports 里 types 显式为 null',
+    '?.()[ 组合 + do-not-use 子路径 types:null',
+    'NAP-1 模式:' + nap.includes("getRuntimeProperties?.()['OSS Release Version']") +
+      ' / 仅判 HermesInternal==null:' + nap.includes('if (global.HermesInternal == null)') +
+      ' / 导入内部子路径:' + nap.includes("from 'react-native/unstable-internals-do-not-use'") +
+      ' / types:' + JSON.stringify(rnPkg.exports['./unstable-internals-do-not-use'].types),
+    nap.includes("getRuntimeProperties?.()['OSS Release Version']") &&
+      !nap.includes("getRuntimeProperties?.()?.['OSS Release Version']") &&
+      nap.includes('if (global.HermesInternal == null)') &&
+      nap.includes("from 'react-native/unstable-internals-do-not-use'") &&
+      rnPkg.exports['./unstable-internals-do-not-use'].types === null);
+
+  // ── NAP-3 / NAP-4 / NAP-7 ──
+  add('C668', 'NAP-3 / NAP-4 / NAP-7：index.d.ts 与 NewAppScreen.js 各写一份 NewAppScreenProps（字段一致但无校验），package.json 无 types 字段；getDevServer 的 FALLBACK 与正则都保证 url 带尾斜杠，故 url + \'open-url\' 正确；homepage/bugs 指向 github.com/react/react-native',
+    '两份 props 副本 + 尾斜杠 + react/react-native URL',
+    'd.ts props:' + napDts.includes('export type NewAppScreenProps') +
+      ' / js props:' + nap.includes('export type NewAppScreenProps') +
+      ' / pkg types 字段:' + ('types' in napPkg) +
+      ' / FALLBACK 带斜杠:' + getDevServerSrc.includes("const FALLBACK = 'http://localhost:8081/'") +
+      ' / 拼接:' + nap.includes("getDevServer().url + 'open-url'") +
+      ' / react org URL:' + napPkg.homepage.includes('github.com/react/react-native'),
+    napDts.includes('export type NewAppScreenProps') &&
+      nap.includes('export type NewAppScreenProps') &&
+      napDts.includes('templateFileName?: string | undefined;') &&
+      nap.includes('templateFileName?: string,') &&
+      !('types' in napPkg) &&
+      getDevServerSrc.includes("const FALLBACK = 'http://localhost:8081/'") &&
+      getDevServerSrc.includes('URL to packager with trailing slash') &&
+      nap.includes("getDevServer().url + 'open-url'") &&
+      napPkg.homepage.includes('github.com/react/react-native'));
+
+  // ── TLB-1 / TLB-2 ──
+  add('C669', 'TLB-1 / TLB-2：__tests__/TestLibraryAppleTests.cpp 是「一旦被编译就必失败」的陷阱（include 不存在路径 + static_assert(false)）；版本串 0.87.0-main 在 common/package.json 与 common/TestLibraryCommon.mm 各写一次',
+    '编译陷阱 + 版本双写',
+    '陷阱 include:' + tlTrap.includes('#include <this/header/intentionally/does/not/exist.h>') +
+      ' / static_assert(false):' + /static_assert\(\s*false,/.test(tlTrap) +
+      ' / 版本 package.json:' + tlCommonPkg.version +
+      ' / 版本 .mm:' + (/@"common@([0-9.]+-main)"/.exec(tlCommonMm) ?? [])[1],
+    tlTrap.includes('#include <this/header/intentionally/does/not/exist.h>') &&
+      /static_assert\(\s*false,/.test(tlTrap) &&
+      tlTrap.includes('must not be compiled by the SPM autolinker') &&
+      tlCommonPkg.version === '0.87.0-main' &&
+      tlCommonMm.includes('@"common@0.87.0-main"'));
+
+  // ── TLB-3 / TLB-5 / TLB-7 ──
+  add('C670', 'TLB-3 / TLB-5 / TLB-7：两个 react-native.config.js 都只声明 ios（「common」也不例外），apple/index.js 文案里建议安装的 react-native-test-library-android 在 packages/ 下不存在；common 没有 peerDependencies 却直接 import react-native；两个原生模块的 reject 回调从未被调用',
+    '仅 ios + 兄弟包不存在 + common 缺 peer + reject 未用',
+    'apple cfg 提 android:' + tlAppleCfg.includes('android') +
+      ' / common cfg 提 android:' + tlCommonCfg.includes('android') +
+      ' / android 兄弟包存在:' + fs.existsSync(path.join(REPO, 'packages/react-native-test-library-android')) +
+      ' / common 有 peer:' + ('peerDependencies' in tlCommonPkg) +
+      ' / apple 有 peer:' + ('peerDependencies' in tlApplePkg) +
+      ' / common import react-native:' + tlCommonJs.includes("from 'react-native'") +
+      ' / reject( 次数 apple/common:' + countOf(tlAppleMm, 'reject(') + '/' + countOf(tlCommonMm, 'reject('),
+    !tlAppleCfg.includes('android') && tlAppleCfg.includes('ios: {}') &&
+      !tlCommonCfg.includes('android') && tlCommonCfg.includes('ios: {}') &&
+      !fs.existsSync(path.join(REPO, 'packages/react-native-test-library-android')) &&
+      tlAppleJs.includes('react-native-test-library-android') &&
+      !('peerDependencies' in tlCommonPkg) &&
+      'peerDependencies' in tlApplePkg &&
+      tlCommonJs.includes("from 'react-native'") &&
+      countOf(tlAppleMm, 'reject(') === 0 && countOf(tlCommonMm, 'reject(') === 0);
+
+  // ── 文档侧 ──
+  addDocClaim('D277', '81 文档写明 polyfills 有两条消费路径', /两条消费路径|绕过了 `console`/, {min: 1});
+  addDocClaim('D278', '81 文档写明 applyWithGuardIfNeeded 丢返回值', /applyWithGuardIfNeeded.{0,24}丢掉返回值|丢掉返回值/, {min: 1});
+  addDocClaim('D279', '81 文档写明默认 handler 是 throw、guard 会重抛', /guard 会重新抛出|guard 会重抛/, {min: 1});
+  addDocClaim('D280', '81 文档写明 formatValue 的 200 次上限', /200 次调用上限|200 次全树共享上限/, {min: 1});
+  addDocClaim('D281', '81 文档写明 console 组装顺序的两种语义', /宿主优先|无条件覆盖/, {min: 1});
+  addDocClaim('D282', '81 文档写明 console.table 列宽按 UTF-16 码元', /UTF-16 码元/, {min: 1});
+  addDocClaim('D283', '81 文档写明 getRuntimeProperties 的可选链位置错误', /只保护了调用|可选链位置错误/, {min: 1});
+  addDocClaim('D284', '81 文档写明欢迎屏依赖 do-not-use 内部子路径', /unstable-internals-do-not-use|do-not-use/, {min: 1});
+  addDocClaim('D285', '81 文档写明 __tests__ 里的编译陷阱', /一旦被编译就必失败|编译失败.{0,6}当断言/, {min: 1});
+  addDocClaim('D286', '81 文档写明版本串双写', /版本号在两处手写|版本串.{0,12}各写一次/, {min: 1});
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // 报告
 // ────────────────────────────────────────────────────────────────────────
