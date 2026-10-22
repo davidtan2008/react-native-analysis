@@ -13422,6 +13422,371 @@ addDocClaim('D217', '文档给出了哈希契约违反在 AttributedString 一�
   addDocClaim('D286', '81 文档写明版本串双写', /版本号在两处手写|版本串.{0,12}各写一次/, {min: 1});
 }
 
+
+// ────────────────────────────────────────────────────────────────────────
+// 82 文档 · renderer/scheduler + renderer/runtimescheduler
+//   SCH-1 … SCH-10 · RTS-1 … RTS-16
+// ────────────────────────────────────────────────────────────────────────
+{
+  const rd = p => fs.readFileSync(path.join(REPO, p), 'utf8');
+  const SC = 'packages/react-native/ReactCommon/react/renderer/scheduler/';
+  const RS = 'packages/react-native/ReactCommon/react/renderer/runtimescheduler/';
+  const schedCpp = rd(SC + 'Scheduler.cpp');
+  const schedH = rd(SC + 'Scheduler.h');
+  const shH = rd(SC + 'SurfaceHandler.h');
+  const shCpp = rd(SC + 'SurfaceHandler.cpp');
+  const smCpp = rd(SC + 'SurfaceManager.cpp');
+  const rsCpp = rd(RS + 'RuntimeScheduler.cpp');
+  const rsH = rd(RS + 'RuntimeScheduler.h');
+  const modernCpp = rd(RS + 'RuntimeScheduler_Modern.cpp');
+  const modernH = rd(RS + 'RuntimeScheduler_Modern.h');
+  const legacyCpp = rd(RS + 'RuntimeScheduler_Legacy.cpp');
+  const bindingCpp = rd(RS + 'RuntimeSchedulerBinding.cpp');
+  const primH = rd(RS + 'primitives.h');
+  const taskH = rd(RS + 'Task.h');
+  const taskCpp = rd(RS + 'Task.cpp');
+  const prioUtils = rd(RS + 'SchedulerPriorityUtils.h');
+  const callInvokerH = rd(RS + 'RuntimeSchedulerCallInvoker.h');
+  const callInvokerCpp = rd(RS + 'RuntimeSchedulerCallInvoker.cpp');
+  const idleCb = rd('packages/react-native/ReactCommon/react/nativemodule/idlecallbacks/NativeIdleCallbacks.cpp');
+  const perfH = rd('packages/react-native/ReactCommon/react/performance/timeline/PerformanceEntryReporter.h');
+  const countOf = (h, n) => h.split(n).length - 1;
+  const slice = (s, a, b) => { const i = s.indexOf(a); return i < 0 ? '' : s.slice(i, i + b); };
+  const getShouldYieldLegacy = slice(legacyCpp, 'bool RuntimeScheduler_Legacy::getShouldYield', 200);
+  const getShouldYieldModern = slice(modernCpp, 'bool RuntimeScheduler_Modern::getShouldYield', 400);
+  const startWorkLoop = slice(legacyCpp, 'void RuntimeScheduler_Legacy::startWorkLoop', 1400);
+  const setCtxContainer = slice(shCpp, 'void SurfaceHandler::setContextContainer', 300);
+  const measureFn = slice(shCpp, 'Size SurfaceHandler::measure', 900);
+  const stopSurface = slice(smCpp, 'void SurfaceManager::stopSurface', 900);
+  const canceCallbackFn = slice(bindingCpp, 'unstable_cancelCallback', 700);
+  const schedCallbackFn = slice(bindingCpp, 'unstable_scheduleCallback', 800);
+  const errHandler = slice(modernCpp, 'void RuntimeScheduler_Modern::handleTaskError', 400);
+  const reportLong = slice(modernCpp, 'void RuntimeScheduler_Modern::reportLongTasks', 700);
+
+  // ── SCH-1 ──
+  add('C671', 'SCH-1：SurfaceHandler 类注释说「movable only」，但四个特殊成员全 = delete（且两个成员是 std::shared_mutex，本身不可移动）',
+    'movable only + 4 个 delete + shared_mutex 成员',
+    'movable only:' + shH.includes('The instances of this class are movable only.') +
+      ' / delete 数:' + countOf(shH, '= delete;') +
+      ' / Not moveable or copyable:' + shH.includes('Not moveable or copyable') +
+      ' / shared_mutex:' + countOf(shH, 'mutable std::shared_mutex'),
+    shH.includes('The instances of this class are movable only.') &&
+      countOf(shH, '= delete;') === 4 &&
+      shH.includes('SurfaceHandler(SurfaceHandler &&other) noexcept = delete;') &&
+      shH.includes('Not moveable or copyable') &&
+      countOf(shH, 'mutable std::shared_mutex') === 2);
+
+  // ── SCH-2 ──
+  add('C672', 'SCH-2：Parameters 组声称改要 unique lock、读只要 shared lock，但 setContextContainer 无锁写 contextContainer，measure 与 constraintLayout 无锁读 surfaceId/contextContainer，start 内还无锁读 displayMode',
+    'setContextContainer 无 parametersMutex_ + 4 个 setter 有 unique_lock + measure 无锁读',
+    'setContextContainer 取锁:' + setCtxContainer.includes('parametersMutex_') +
+      ' / setSurfaceId unique_lock:' + slice(shCpp, 'void SurfaceHandler::setSurfaceId', 300).includes('std::unique_lock lock(parametersMutex_)') +
+      ' / setProps unique_lock:' + slice(shCpp, 'void SurfaceHandler::setProps', 400).includes('std::unique_lock lock(parametersMutex_)') +
+      ' / measure 取 parametersMutex_:' + measureFn.includes('parametersMutex_') +
+      ' / measure 读 contextContainer:' + measureFn.includes('parameters_.contextContainer'),
+    !setCtxContainer.includes('parametersMutex_') &&
+      setCtxContainer.includes('parameters_.contextContainer = std::move(contextContainer);') &&
+      slice(shCpp, 'void SurfaceHandler::setSurfaceId', 300).includes('std::unique_lock lock(parametersMutex_)') &&
+      slice(shCpp, 'void SurfaceHandler::setProps', 400).includes('std::unique_lock lock(parametersMutex_)') &&
+      slice(shCpp, 'void SurfaceHandler::setDisplayMode', 400).includes('std::unique_lock lock(parametersMutex_)') &&
+      !measureFn.includes('parametersMutex_') &&
+      shH.includes('reading needs only'));
+
+  // ── SCH-3 ──
+  add('C673', 'SCH-3：SurfaceHandler.h 承诺停止/未注册时 measure 返回零尺寸，实现返回 layoutConstraints.clamp({0,0})，带最小约束时会得到非零尺寸',
+    'clamp({0,0}) + 注释 Returns zero size',
+    'clamp:' + measureFn.includes('layoutConstraints.clamp({.width = 0, .height = 0})') +
+      ' / 注释:' + shH.includes('Returns zero size if called on the stopped or unregistered surface.'),
+    measureFn.includes('if (link_.status != Status::Running)') &&
+      measureFn.includes('return layoutConstraints.clamp({.width = 0, .height = 0});') &&
+      shH.includes('Returns zero size if called on the stopped or unregistered surface.'));
+
+  // ── SCH-4 ──
+  add('C674', 'SCH-4：SurfaceManager::stopSurface 对未注册 surface 也会执行 registry_.erase(find(surfaceId))，没有 != end() 检查 → erase(end()) 是 UB',
+    'stopSurface 内 erase 无 end 检查',
+    'erase(iterator):' + stopSurface.includes('registry_.erase(iterator);') +
+      ' / stopSurface 内 end 检查:' + stopSurface.includes('registry_.end()') +
+      ' / 只打 WARNING:' + stopSurface.includes('LOG(WARNING)'),
+    stopSurface.includes('auto iterator = registry_.find(surfaceId);') &&
+      stopSurface.includes('registry_.erase(iterator);') &&
+      !stopSurface.includes('registry_.end()') &&
+      stopSurface.includes('tried to stop a surface which was not running'));
+
+  // ── SCH-5 ──
+  add('C675', 'SCH-5：isSurfaceRunning 用 registry_.contains —— 判定的是「已注册」；startSurface 先 try_emplace 入表再 start()，中途抛异常不会回滚',
+    'contains + 先入表后 start',
+    'contains:' + smCpp.includes('return registry_.contains(surfaceId);') +
+      ' / try_emplace 行:' + (smCpp.indexOf('registry_.try_emplace') < smCpp.indexOf('surfaceHandler.start()')),
+    smCpp.includes('bool SurfaceManager::isSurfaceRunning(SurfaceId surfaceId) const noexcept {') &&
+      smCpp.includes('return registry_.contains(surfaceId);') &&
+      smCpp.indexOf('registry_.try_emplace') > 0 &&
+      smCpp.indexOf('registry_.try_emplace') < smCpp.indexOf('surfaceHandler.start()'));
+
+  // ── SCH-6 ──
+  add('C676', 'SCH-6：Scheduler 析构先 react_native_assert(surfaceIds.empty())，release 下继续走 commitEmptyTree + remove，注释自陈 remove 可能死锁；析构无条件 LOG(WARNING)',
+    'assert + in theory it can deadlock + 无条件 WARNING',
+    'assert:' + schedCpp.includes('Scheduler was destroyed with outstanding Surfaces.') +
+      ' / deadlock 注释:' + schedCpp.includes('theory, it can deadlock.') +
+      ' / WARNING 数:' + countOf(schedCpp, 'LOG(WARNING)'),
+    schedCpp.includes('react_native_assert(\n      surfaceIds.empty() &&\n      "Scheduler was destroyed with outstanding Surfaces.");') &&
+      schedCpp.includes('theory, it can deadlock.') &&
+      schedCpp.includes('shadowTree.commitEmptyTree();') &&
+      schedCpp.includes('uiManager_->getShadowTreeRegistry().remove(surfaceId);'));
+
+  // ── SCH-7 ──
+  add('C677', 'SCH-7：Scheduler 里 dispatchCommand 与 finishReactCommit 包进 scheduleRenderingUpdate，而 accessibility / setJSResponder / updateShadowTree 直接调 delegate —— 5 个回调 3 同步 2 异步',
+    'dispatchCommand 异步 + accessibility 同步',
+    'dispatchCommand 用 scheduleRenderingUpdate:' + slice(schedCpp, 'void Scheduler::uiManagerDidDispatchCommand', 1200).includes('scheduleRenderingUpdate(') +
+      ' / accessibility 直接调:' + slice(schedCpp, 'void Scheduler::uiManagerDidSendAccessibilityEvent', 500).includes('delegate_->schedulerDidSendAccessibilityEvent') +
+      ' / accessibility 里有 scheduleRenderingUpdate:' + slice(schedCpp, 'void Scheduler::uiManagerDidSendAccessibilityEvent', 500).includes('scheduleRenderingUpdate'),
+    slice(schedCpp, 'void Scheduler::uiManagerDidDispatchCommand', 1200).includes('scheduleRenderingUpdate(') &&
+      slice(schedCpp, 'void Scheduler::uiManagerDidSendAccessibilityEvent', 500).includes('delegate_->schedulerDidSendAccessibilityEvent(') &&
+      !slice(schedCpp, 'void Scheduler::uiManagerDidSendAccessibilityEvent', 500).includes('scheduleRenderingUpdate') &&
+      slice(schedCpp, 'void Scheduler::uiManagerDidSetIsJSResponder', 500).includes('delegate_->schedulerDidSetIsJSResponder(') &&
+      !slice(schedCpp, 'void Scheduler::uiManagerDidSetIsJSResponder', 500).includes('scheduleRenderingUpdate'));
+
+  // ── SCH-8 ──
+  add('C678', 'SCH-8：Scheduler 构造里 cdpMetricsReporter_ 要 enableBridgelessArchitecture() && cdpInteractionMetricsEnabled()，而 cdpPerfIssuesReporter_ 只要 perfIssuesEnabled() —— 门禁不对称',
+    'cdpMetrics 双条件 + perfIssues 单条件',
+    'cdp 双条件:' + schedCpp.includes('ReactNativeFeatureFlags::enableBridgelessArchitecture() &&\n      ReactNativeFeatureFlags::cdpInteractionMetricsEnabled()') +
+      ' / perfIssues 存在:' + schedCpp.includes('ReactNativeFeatureFlags::perfIssuesEnabled()') +
+      ' / perfIssues 与 bridgeless 同行:' + /perfIssuesEnabled\(\)\s*&&/.test(schedCpp),
+    schedCpp.includes('ReactNativeFeatureFlags::enableBridgelessArchitecture() &&\n      ReactNativeFeatureFlags::cdpInteractionMetricsEnabled()') &&
+      schedCpp.includes('ReactNativeFeatureFlags::perfIssuesEnabled()') &&
+      !/enableBridgelessArchitecture\(\)\s*&&\s*\n?\s*ReactNativeFeatureFlags::perfIssuesEnabled/.test(schedCpp));
+
+  // ── SCH-9 ──
+  add('C679', 'SCH-9：Scheduler 把「已知坏」写进 API 名 findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN，声明与定义各一处',
+    'DO_NOT_USE 出现在 .h 与 .cpp',
+    'h:' + schedH.includes('findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN') +
+      ' / cpp:' + schedCpp.includes('findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN') +
+      ' / This is broken:' + schedH.includes('This is broken. Please do not use.'),
+    schedH.includes('findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN') &&
+      schedCpp.includes('findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN') &&
+      schedH.includes('This is broken. Please do not use.'));
+
+  // ── SCH-10 ──
+  add('C680', 'SCH-10：AnimationBackend 的构造必须在 uiManager->setDelegate 之后 —— 注释明确说 UIManager 在没 delegate 时会静默丢弃 surface-start 回调；同类静默丢弃还有 addEventListener（eventDispatcher_ 为空）与 animationTick（uiManager_ 为空）',
+    'setDelegate 行号 < AnimationBackend 行号 + silently drops + 两处静默返回',
+    'setDelegate 在前:' + (schedCpp.indexOf('uiManager->setDelegate(this);') < schedCpp.indexOf('std::make_shared<AnimationBackend>')) +
+      ' / silently drops:' + schedCpp.includes('silently drops those while it has\n  // no delegate') +
+      ' / addEventListener 判空:' + slice(schedCpp, 'void Scheduler::addEventListener', 400).includes('if (eventDispatcher_->has_value())') +
+      ' / animationTick 判空:' + slice(schedCpp, 'void Scheduler::animationTick', 300).includes('if (!uiManager_)'),
+    schedCpp.indexOf('uiManager->setDelegate(this);') < schedCpp.indexOf('std::make_shared<AnimationBackend>') &&
+      schedCpp.includes('silently drops those while it has') &&
+      slice(schedCpp, 'void Scheduler::addEventListener', 400).includes('if (eventDispatcher_->has_value())') &&
+      slice(schedCpp, 'void Scheduler::animationTick', 300).includes('if (!uiManager_)'));
+
+  // ── RTS-1 ──
+  add('C681', 'RTS-1：RuntimeScheduler 的实现分叉只在构造时按 enableBridgelessArchitecture() 选一次，不存在运行时重选分支',
+    'getRuntimeSchedulerImplementation 里的 flag 只有 1 次',
+    'flag 出现次数:' + countOf(rsCpp, 'enableBridgelessArchitecture()') +
+      ' / Modern 构造:' + rsCpp.includes('std::make_unique<RuntimeScheduler_Modern>') +
+      ' / Legacy 构造:' + rsCpp.includes('std::make_unique<RuntimeScheduler_Legacy>') +
+      ' / 头文件 selected at runtime:' + rsH.includes('at runtime based on a feature flag'),
+    countOf(rsCpp, 'enableBridgelessArchitecture()') === 1 &&
+      rsCpp.includes('std::make_unique<RuntimeScheduler_Modern>') &&
+      rsCpp.includes('std::make_unique<RuntimeScheduler_Legacy>') &&
+      rsH.includes('at runtime based on a feature flag'));
+
+  // ── RTS-2 ──
+  add('C682', 'RTS-2：scheduleRenderingUpdate 在两个分叉上语义相反 —— Legacy 直接调 renderingUpdate()，Modern 只 push 进 pendingRenderingUpdates_；Modern 头文件却承诺「步骤未启用时立即执行」',
+    'Legacy 直接调用 + Modern 只入队 + 头注释立即执行',
+    'Legacy 直接调:' + slice(legacyCpp, 'void RuntimeScheduler_Legacy::scheduleRenderingUpdate', 400).includes('renderingUpdate();') +
+      ' / Modern push:' + slice(modernCpp, 'void RuntimeScheduler_Modern::scheduleRenderingUpdate', 400).includes('pendingRenderingUpdates_.push(renderingUpdate);') +
+      ' / Modern 直接调:' + slice(modernCpp, 'void RuntimeScheduler_Modern::scheduleRenderingUpdate', 400).includes('renderingUpdate();') +
+      ' / 头注释:' + modernH.includes('If the step is not enabled, the function is executed'),
+    slice(legacyCpp, 'void RuntimeScheduler_Legacy::scheduleRenderingUpdate', 400).includes('renderingUpdate();') &&
+      slice(modernCpp, 'void RuntimeScheduler_Modern::scheduleRenderingUpdate', 400).includes('pendingRenderingUpdates_.push(renderingUpdate);') &&
+      !slice(modernCpp, 'void RuntimeScheduler_Modern::scheduleRenderingUpdate', 400).includes('renderingUpdate();') &&
+      modernH.includes('If the step is not enabled, the function is executed'));
+
+  // ── RTS-3 ──
+  add('C683', 'RTS-3：Legacy 的 getShouldYield 只看 runtimeAccessRequests_ > 0，不看任务队列；Modern 看队列 top 是否等于 currentTask_，而 selectTask 只弹出 callback 为空的任务、不弹出正在执行的任务',
+    'Legacy 单条件 + Modern top!=currentTask + selectTask 不 pop 当前任务',
+    'Legacy:' + getShouldYieldLegacy.replace(/\s+/g, ' ').includes('return runtimeAccessRequests_ > 0;') +
+      ' / Modern:' + getShouldYieldModern.replace(/\s+/g, ' ').includes('taskQueue_.top().get() != currentTask_') +
+      ' / Legacy 看 taskQueue_:' + getShouldYieldLegacy.includes('taskQueue_') +
+      ' / selectTask 只弹空 callback:' + slice(modernCpp, 'std::shared_ptr<Task> RuntimeScheduler_Modern::selectTask', 700).includes('while (!taskQueue_.empty() && !taskQueue_.top()->callback)'),
+    getShouldYieldLegacy.replace(/\s+/g, ' ').includes('return runtimeAccessRequests_ > 0;') &&
+      !getShouldYieldLegacy.includes('taskQueue_') &&
+      getShouldYieldModern.replace(/\s+/g, ' ').includes('!taskQueue_.empty() && taskQueue_.top().get() != currentTask_') &&
+      slice(modernCpp, 'std::shared_ptr<Task> RuntimeScheduler_Modern::selectTask', 700).includes('while (!taskQueue_.empty() && !taskQueue_.top()->callback)'));
+
+  // ── RTS-4 ──
+  add('C684', 'RTS-4：Task::id 由 getNextId 单调赋值但只用于 trace，不参与 TaskPriorityComparer（只比 expirationTime）；超时表 0/250ms/5s/10s/5min，fromRawValue 的 default 在 release 静默返回 NormalPriority',
+    'id 仅 trace + 比较器只看 expirationTime + 5 档超时',
+    'id 使用处（非赋值）:' + (countOf(taskCpp, 'id(getNextId())')) +
+      ' / comparer:' + taskH.includes('return lhs->expirationTime > rhs->expirationTime;') +
+      ' / comparer 提 id:' + slice(taskH, 'class TaskPriorityComparer', 200).includes('id') +
+      ' / 5s:' + prioUtils.includes('std::chrono::seconds(5)') +
+      ' / 5min:' + prioUtils.includes('std::chrono::minutes(5)') +
+      ' / default 返回 Normal:' + prioUtils.includes('return SchedulerPriority::NormalPriority;'),
+    countOf(taskCpp, 'id(getNextId())') === 2 &&
+      taskH.includes('return lhs->expirationTime > rhs->expirationTime;') &&
+      !slice(taskH, 'class TaskPriorityComparer', 200).includes('->id') &&
+      prioUtils.includes('std::chrono::seconds(5)') && prioUtils.includes('std::chrono::seconds(10)') &&
+      prioUtils.includes('std::chrono::minutes(5)') && prioUtils.includes('std::chrono::milliseconds(250)') &&
+      prioUtils.includes('return SchedulerPriority::NormalPriority;'));
+
+  // ── RTS-5 ──
+  add('C685', 'RTS-5：Modern 的 handleTaskError 先 clearQueues()（清空 taskQueue_ 与 pendingRenderingUpdates_）再上报；Legacy 的两个 catch 只调 onTaskError_，不清队列',
+    'Modern clearQueues + Legacy 不清',
+    'Modern 调 clearQueues:' + errHandler.includes('clearQueues();') +
+      ' / clearQueues 清 taskQueue_:' + slice(modernCpp, 'void RuntimeScheduler_Modern::clearQueues', 400).includes('taskQueue_ = {};') +
+      ' / Legacy catch 调 clearQueues:' + startWorkLoop.includes('clearQueues') +
+      ' / Legacy catch 次数:' + countOf(startWorkLoop, 'onTaskError_(runtime, error);'),
+    errHandler.includes('clearQueues();') &&
+      slice(modernCpp, 'void RuntimeScheduler_Modern::clearQueues', 400).includes('taskQueue_ = {};') &&
+      slice(modernCpp, 'void RuntimeScheduler_Modern::clearQueues', 400).includes('pendingRenderingUpdates_ = {};') &&
+      !startWorkLoop.includes('clearQueues') &&
+      countOf(startWorkLoop, 'onTaskError_(runtime, error);') === 2);
+
+  // ── RTS-6 ──
+  add('C686', 'RTS-6：Modern 的 performMicrotaskCheckpoint 在 255 次后 throw std::runtime_error，147 行函数内没有自己的 try（只有 drainMicrotasks 的 try），调用点 runEventLoopTick/runEventLoop 也不捕获',
+    '255 + throw runtime_error + OnScopeExit 有 / 调用点无 try',
+    'kRetriesBound:' + modernCpp.includes('kRetriesBound = 255') +
+      ' / throw:' + modernCpp.includes('throw std::runtime_error("Hits microtasks retries bound.");') +
+      ' / OnScopeExit:' + modernCpp.includes('OnScopeExit restoreFlag') +
+      ' / runEventLoopTick 里 try:' + slice(modernCpp, 'void RuntimeScheduler_Modern::runEventLoopTick', 1200).includes('try {') +
+      ' / runEventLoop 里 try:' + slice(modernCpp, 'void RuntimeScheduler_Modern::runEventLoop(', 900).includes('try {'),
+    modernCpp.includes('const static unsigned int kRetriesBound = 255;') &&
+      modernCpp.includes('throw std::runtime_error("Hits microtasks retries bound.");') &&
+      modernCpp.includes('OnScopeExit restoreFlag') &&
+      !slice(modernCpp, 'void RuntimeScheduler_Modern::runEventLoop(', 900).includes('try {') &&
+      slice(modernCpp, 'void RuntimeScheduler_Modern::runEventLoop(', 900).includes('runEventLoopTick(runtime, *topPriorityTask);'));
+
+  // ── RTS-7 ──
+  add('C687', 'RTS-7：长任务判定用 longestPeriodWithoutYieldingOpportunity_（阈值 50ms），上报却用 endTime - startTime；而 getShouldYield 每次都调 markYieldingOpportunity 重置基准 —— 频繁轮询 shouldYield 的任务不会被上报',
+    '50ms + 间隔判定 + 总时长上报 + shouldYield 内标记',
+    '阈值:' + perfH.includes('LONG_TASK_DURATION_THRESHOLD = HighResDuration::fromMilliseconds(50)') +
+      ' / 判定用到间隔:' + reportLong.includes('longestPeriodWithoutYieldingOpportunity_ >=') +
+      ' / 上报用总时长:' + reportLong.includes('auto duration = endTime - startTime;') +
+      ' / shouldYield 调标记:' + getShouldYieldModern.includes('markYieldingOpportunity(now_());'),
+    perfH.includes('LONG_TASK_DURATION_THRESHOLD = HighResDuration::fromMilliseconds(50)') &&
+      reportLong.includes('longestPeriodWithoutYieldingOpportunity_ >=') &&
+      reportLong.includes('LONG_TASK_DURATION_THRESHOLD') &&
+      reportLong.includes('auto duration = endTime - startTime;') &&
+      reportLong.includes('reporter->reportLongTask(startTime, duration);') &&
+      getShouldYieldModern.includes('markYieldingOpportunity(now_());'));
+
+  // ── RTS-8 ──
+  add('C688', 'RTS-8：unstable_scheduleCallback 的 arity 声明为 3，但整份 binding 文件里 arguments[0] 出现 2 次、arguments[1] 出现 1 次、arguments[2] 出现 0 次 —— 第三个参数（options/delay）被静默忽略',
+    'arity 3 + arguments[2] 出现 0 次',
+    'arity:' + schedCallbackFn.includes('3,') +
+      ' / arguments[2] 数:' + countOf(bindingCpp, 'arguments[2]') +
+      ' / arguments[0] 数:' + countOf(bindingCpp, 'arguments[0]') +
+      ' / arguments[1] 数:' + countOf(bindingCpp, 'arguments[1]'),
+    schedCallbackFn.includes('3,') &&
+      countOf(bindingCpp, 'arguments[2]') === 0 &&
+      countOf(bindingCpp, 'arguments[0]') === 2 &&
+      countOf(bindingCpp, 'arguments[1]') === 1);
+
+  // ── RTS-9 ──
+  add('C689', 'RTS-9：primitives.h 的 taskFromValue 对 null 返回 nullptr，而 unstable_cancelCallback 直接写 cancelTask(*taskFromValue(...)) 且 lambda 标 noexcept',
+    'null→nullptr + *解引用 + noexcept',
+    'null→nullptr:' + primH.includes('if (value.isNull())') +
+      ' / cancelTask(*...):' + canceCallbackFn.includes('cancelTask(*taskFromValue(runtime, arguments[0]))') +
+      ' / noexcept:' + canceCallbackFn.includes('noexcept'),
+    primH.includes('if (value.isNull())') && primH.includes('return nullptr;') &&
+      canceCallbackFn.includes('cancelTask(*taskFromValue(runtime, arguments[0]))') &&
+      canceCallbackFn.includes('noexcept'));
+
+  // ── RTS-10 ──
+  add('C690', 'RTS-10：Legacy 两个 scheduleIdleTask 重载都返回 nullptr，唯一 in-tree 调用方 NativeIdleCallbacks 因此抛 "requestIdleCallback is not supported in legacy runtime scheduler"',
+    '两个重载返回 nullptr + 调用方抛错',
+    '返回 nullptr 数:' + countOf(legacyCpp, 'return nullptr;') +
+      ' / idle 不在 Legacy 支持:' + legacyCpp.includes('Idle tasks are not supported on Legacy RuntimeScheduler.') +
+      ' / 调用方抛错:' + idleCb.includes('requestIdleCallback is not supported in legacy runtime scheduler'),
+    countOf(legacyCpp, 'return nullptr;') === 2 &&
+      legacyCpp.includes('Idle tasks are not supported on Legacy RuntimeScheduler.') &&
+      idleCb.includes('requestIdleCallback is not supported in legacy runtime scheduler') &&
+      idleCb.includes('if (task == nullptr)') &&
+      modernCpp.includes('getResolvedTimeoutForIdleTask'));
+
+  // ── RTS-11 ──
+  add('C691', 'RTS-11：Legacy 的 startWorkLoop 用裸赋值维护 isPerformingWork_（无 RAII），而 onTaskError_ 就在 catch 块内；一旦它抛异常，isPerformingWork_ 永久为 true → scheduleWorkLoopIfNecessary 不再调度。Modern 的同款标志用了 OnScopeExit',
+    'isPerformingWork_ 裸赋值 + onTaskError_ 在 catch 内 + Modern 用 OnScopeExit',
+    'true 赋值:' + startWorkLoop.includes('isPerformingWork_ = true;') +
+      ' / false 赋值:' + startWorkLoop.includes('isPerformingWork_ = false;') +
+      ' / onTaskError_ 在 catch 内:' + startWorkLoop.includes('catch (jsi::JSError& error) {\n    onTaskError_(runtime, error);') +
+      ' / 门禁:' + legacyCpp.includes('if (!isWorkLoopScheduled_ && !isPerformingWork_)') +
+      ' / Modern OnScopeExit:' + modernCpp.includes('OnScopeExit restoreFlag'),
+    startWorkLoop.includes('isPerformingWork_ = true;') &&
+      startWorkLoop.includes('isPerformingWork_ = false;') &&
+      startWorkLoop.indexOf('onTaskError_(runtime, error);') < startWorkLoop.indexOf('isPerformingWork_ = false;') &&
+      legacyCpp.includes('if (!isWorkLoopScheduled_ && !isPerformingWork_)') &&
+      modernCpp.includes('OnScopeExit restoreFlag') &&
+      !startWorkLoop.includes('OnScopeExit'));
+
+  // ── RTS-12 ──
+  add('C692', 'RTS-12：executeNowOnTheSameThread 在调用 executor 前 syncTaskRequests_++、在 lambda 体内 syncTaskRequests_--；入口函数名自带 _CAN_DEADLOCK；runtimePtr 的复位也没有 RAII',
+    '++ 在 lambda 外 / -- 在 lambda 内 / _CAN_DEADLOCK',
+    '++ 位置早于 executor:' + (slice(modernCpp, 'void RuntimeScheduler_Modern::executeNowOnTheSameThread', 1400).indexOf('syncTaskRequests_++;') < slice(modernCpp, 'void RuntimeScheduler_Modern::executeNowOnTheSameThread', 1400).indexOf('executeSynchronouslyOnSameThread_CAN_DEADLOCK')) +
+      ' / -- 在 lambda 内:' + modernCpp.includes('syncTaskRequests_--;\n        runtimePtr = &runtime;') +
+      ' / _CAN_DEADLOCK:' + modernCpp.includes('executeSynchronouslyOnSameThread_CAN_DEADLOCK'),
+    slice(modernCpp, 'void RuntimeScheduler_Modern::executeNowOnTheSameThread', 1400).indexOf('syncTaskRequests_++;') <
+        slice(modernCpp, 'void RuntimeScheduler_Modern::executeNowOnTheSameThread', 1400).indexOf('executeSynchronouslyOnSameThread_CAN_DEADLOCK') &&
+      modernCpp.includes('syncTaskRequests_--;\n        runtimePtr = &runtime;') &&
+      modernCpp.includes('executeSynchronouslyOnSameThread_CAN_DEADLOCK') &&
+      modernCpp.includes('runtimePtr = nullptr;'));
+
+  // ── RTS-13 ──
+  add('C693', 'RTS-13：RuntimeSchedulerCallInvoker 已被 [[deprecated]]（理由点名 createJSCallInvoker 的 buffered runtime executor），其 invokeAsync 走 scheduleWork（ImmediatePriority），且 weak_ptr lock 失败时静默返回',
+    'deprecated 字符串 + invokeAsync→scheduleWork + lock 判空',
+    'deprecated:' + callInvokerH.includes('class [[deprecated(') +
+      ' / 替代 API:' + callInvokerH.includes('ReactInstance::createJSCallInvoker()') +
+      ' / scheduleWork:' + callInvokerCpp.includes('runtimeScheduler->scheduleWork(') +
+      ' / lock 判空:' + callInvokerCpp.includes('if (auto runtimeScheduler = runtimeScheduler_.lock())'),
+    callInvokerH.includes('class [[deprecated(') &&
+      callInvokerH.includes('ReactInstance::createJSCallInvoker()') &&
+      callInvokerH.includes("buffered runtime executor so async calls are ordered against callable module calls") &&
+      callInvokerCpp.includes('runtimeScheduler->scheduleWork(') &&
+      callInvokerCpp.includes('if (auto runtimeScheduler = runtimeScheduler_.lock())'));
+
+  // ── RTS-14 ──
+  add('C694', 'RTS-14：unregisterTaskQueueSource 在 Modern 是空实现（带注释说明不需要反注册）；Legacy 侧 registerTaskQueueSource 恒返回 0、unregisterTaskQueueSource 与 scheduleTask(function) 都是空函数',
+    'Modern 空 + Legacy 三处空壳',
+    'Modern unregister 空:' + /void RuntimeScheduler_Modern::unregisterTaskQueueSource\(uint64_t \/\*sourceId\*\/\) \{\n  \/\/ For now/.test(modernCpp) +
+      ' / Legacy register 返回 0:' + legacyCpp.includes('uint64_t RuntimeScheduler_Legacy::registerTaskQueueSource() {\n  return 0;\n}') +
+      ' / Legacy scheduleTask 空:' + legacyCpp.includes('[[maybe_unused]] const std::function<void()>& task) {}'),
+    modernCpp.includes('return nextTaskQueueSourceId_.fetch_add(1) + 1;') &&
+      modernCpp.includes('need to do unregistering') &&
+      legacyCpp.includes('uint64_t RuntimeScheduler_Legacy::registerTaskQueueSource() {\n  return 0;\n}') &&
+      legacyCpp.includes('[[maybe_unused]] const std::function<void()>& task) {}'));
+
+  // ── RTS-15 ──
+  add('C695', 'RTS-15：using SurfaceId = int32_t 在 RuntimeScheduler.h 与两个 delegate 头里各写一次（共 3 处），各自独立于 ReactPrimitives 的权威定义',
+    '3 处 using SurfaceId',
+    'RuntimeScheduler.h:' + rsH.includes('using SurfaceId = int32_t;') +
+      ' / EventTiming:' + rd(RS + 'RuntimeSchedulerEventTimingDelegate.h').includes('using SurfaceId = int32_t;') +
+      ' / Intersection:' + rd(RS + 'RuntimeSchedulerIntersectionObserverDelegate.h').includes('using SurfaceId = int32_t;'),
+    rsH.includes('using SurfaceId = int32_t;') &&
+      rd(RS + 'RuntimeSchedulerEventTimingDelegate.h').includes('using SurfaceId = int32_t;') &&
+      rd(RS + 'RuntimeSchedulerIntersectionObserverDelegate.h').includes('using SurfaceId = int32_t;') &&
+      countOf(rsH + rd(RS + 'RuntimeSchedulerEventTimingDelegate.h') + rd(RS + 'RuntimeSchedulerIntersectionObserverDelegate.h'), 'using SurfaceId = int32_t;') === 3);
+
+  // ── RTS-16 ──
+  add('C696', 'RTS-16：RuntimeSchedulerBase 的基类是 facebook::hermes::IEventLoopControl，头文件因此包含 jsi/hermes-interfaces.h —— 调度器与 JS 引擎无关，但抽象基类绑定了 Hermes 接口',
+    'hermes::IEventLoopControl + hermes-interfaces.h',
+    '基类:' + rsH.includes('class RuntimeSchedulerBase : public facebook::hermes::IEventLoopControl') +
+      ' / include:' + rsH.includes('#include <jsi/hermes-interfaces.h>'),
+    rsH.includes('class RuntimeSchedulerBase : public facebook::hermes::IEventLoopControl') &&
+      rsH.includes('#include <jsi/hermes-interfaces.h>'));
+
+  // ── 文档侧 ──
+  addDocClaim('D287', '82 文档写明两个分叉的 scheduleRenderingUpdate 语义相反', /语义完全相反|语义相反/, {min: 1});
+  addDocClaim('D288', '82 文档写明 Legacy 的 getShouldYield 不看任务队列', /Legacy 的 `getShouldYield\(\)` 不看任务队列|完全不看任务队列/, {min: 1});
+  addDocClaim('D289', '82 文档写明 Parameters 组有 4 处读写落在锁外', /4 处读写完全在锁外|1 处无锁写 \+ 3 处无锁读/, {min: 1});
+  addDocClaim('D290', '82 文档写明 Modern 一次任务错误清空整个队列', /清空\*\*整个\*\*队列|清空整个队列/, {min: 1});
+  addDocClaim('D291', '82 文档写明 isPerformingWork_ 没有 RAII', /`isPerformingWork_` 没有 RAII|无 RAII/, {min: 1});
+  addDocClaim('D292', '82 文档写明 scheduleCallback 的第三个参数被静默忽略', /arity=3 但不读第 3 参数|`delay` 被\*\*静默丢弃\*\*/, {min: 1});
+  addDocClaim('D293', '82 文档写明 stopSurface 的 erase(end()) 是 UB', /`erase\(end\(\)\)`.*UB|erase\(end\(\)\)/, {min: 1});
+  addDocClaim('D294', '82 文档写明长任务口径错位与 shouldYield 轮询可规避', /口径错位|轮询 `shouldYield` 可规避上报/, {min: 1});
+  addDocClaim('D295', '82 文档写明 microtask 护栏本身抛未捕获异常', /护栏本身抛未捕获异常|穿出 executor/, {min: 1});
+  addDocClaim('D296', '82 文档写明 measure 不返回零尺寸', /`clamp` 不是「返回 0」|返回零尺寸.*不成立/, {min: 1});
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // 报告
 // ────────────────────────────────────────────────────────────────────────

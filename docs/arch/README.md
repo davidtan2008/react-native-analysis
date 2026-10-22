@@ -6,13 +6,13 @@
 
 ## 检索入口
 
-> **本目录 81 篇文档按「主题 → 症状 → 结论 → 符号」四条路径组织，全部索引由脚本生成，禁止手写。**
+> **本目录 82 篇文档按「主题 → 症状 → 结论 → 符号」四条路径组织，全部索引由脚本生成，禁止手写。**
 
 | 入口 | 用途 | 从哪开始 |
 | --- | --- | --- |
 | **[00 · 主题地图](./INDEX/00-主题地图.md)** | **按主题域/子主题浏览** —— 8 个主题域、37 个子主题，每个子主题下列出覆盖它的文档、涉及的现象、平台与关键结论数量 | 「我要搞懂某个子系统」 |
 | **[01 · 症状排查手册](./INDEX/01-症状排查手册.md)** | **按现象排查** —— 17 类症状（崩溃/白屏/OOM/泄漏/启动变慢/卡顿/内容增长过快/布局/手势/动画/文本/桥接/属性/构建/调试/无障碍），每类列出相关文档与结论编号 | 「我遇到了某个问题」 |
-| **[02 · 结论速查表](./INDEX/02-结论速查表.md)** | **按结论编号直达** —— 全部 **577 条**编号结论（`ZZ-1` / `AAA-1` / `BBB-2` / `CCC-15` …）的摘要、源码位置与所属文档 | 「我记得有个结论编号」 |
+| **[02 · 结论速查表](./INDEX/02-结论速查表.md)** | **按结论编号直达** —— 全部 **603 条**编号结论（`ZZ-1` / `AAA-1` / `BBB-2` / `CCC-15` …）的摘要、源码位置与所属文档 | 「我记得有个结论编号」 |
 | **[03 · 符号与源码入口](./INDEX/03-符号与源码入口.md)** | **按符号/模块目录检索** —— 关键类与函数 → 讲解它的文档；模块 → 已读/缺口/文档 | 「我知道源码里的某个类」 |
 
 **每篇文档的 front-matter**（`topic` / `symptoms` / `symbols` / `claims` / `platforms` / `architecture` / `layer`）
@@ -106,6 +106,7 @@
 | [79-JS与Native边界的类型兼容性检查器.md](./79-JS与Native边界的类型兼容性检查器.md) | **【CMP-1】`changedParams` 是死错误码** —— 参数个数变化实际走 `length-mismatch` → `incompatibleTypes`；**【CMP-2】`indexers` 完全未参与比较** —— `{[a: string]: ?number}` 与 `?string` 判为 `matching`，配套夹具 `MapWithKey`/`MapWithKey2` 零测试引用；**【CMP-3】属性级 `?T` 变化被折叠成「可选性」变化** —— 报 `optionalProps`（"Property made optional"）而非 `nullableOfNonNull`，四个象限的**方向判定仍正确**，错的是错误码与文案；**【CMP-4】`madeStrict.furtherChange` 是死数据** —— `madeOptional` 有递归、`madeStrict` 没有，导致 `toNative` 下「属性变必填 + 嵌套变化」**一个错误都不报**；**【CMP-5】联合成员内部的变化被静默丢弃**（`//TODO` 自认）；两处已知失明（`Array<ObjA>` vs `Array<ObjB>`、`Object` vs `UnsafeObject`）各有测试**自认**；删除模块/组件被判为 `ok`（代码留 `TODO`）；三处「写了但到不了」（与事实相反的 `$FlowFixMe` 注释、恒真的 `!= null`、少一对括号的 `concat[`）|
 | [80-TypeScript类型测试的失效面.md](./80-TypeScript类型测试的失效面.md) | **【TYP-1】34 条 `$ExpectType` 是纯注释** —— 全仓无 `tsd` / `dtslint` / `eslint-plugin-expect-type`，`tsc` 不解析；**【TYP-2】`strict: false`** —— 只开 `noImplicitAny`/`noImplicitThis`，`strictNullChecks` 关着，于是「传 `null` 应当报错」这类断言永不生效（`onChange={null}`、`trackColor={{false: null}}` 均恒真）；**【TYP-3】`lib: [\"es2020\"]` + `types: []`** —— `globals.tsx` 的全部全局名只能来自 `packages/react-native/src/types/globals.d.ts` 这一份 726 行 `declare global`；**【TYP-4】96 个 runtime getter 导出里 36 个从未进入类型测试**（11 个 `unstable_*`/`experimental_*` + 25 个稳定 API，含 `AppRegistry`/`PanResponder`/`PixelRatio`/`Easing`/`Vibration`）；`types_DEPRECATED/` 被 manifest 标为「已被取代」实际是 deep import 的**唯一**类型源（`exports[\"./Libraries/*\"].types` 为 `null`）；5 处 `@ts-ignore` 全压在 import 上、`legacy-properties.tsx` 整个文件被它架空；`flow/global.js` 的 `[string \| symbol]: any` 索引器打穿整份 `declare var global` |
 | [81-三个对外包的契约缺口.md](./81-三个对外包的契约缺口.md) | **【PLY-2/PLY-3】`ErrorUtils` 的 guard 在默认配置下会重新抛出** —— `applyWithGuardIfNeeded` 的 `else` 分支调用 `applyWithGuard` 后没有 `return`，落到末尾 `return null`，于是「已在 guard 内」返回真值、「不在 guard 内」恒返回 `null`；而默认 `_globalHandler` 就是 `throw e`，`applyWithGuard` 的 `catch → reportError` 等于再抛一次（只有 `RN$useAlwaysAvailableJSErrorHandling === true` 且 `RN$handleException` 不抛时才真吞）；**【PLY-1】polyfills 有两条消费路径** —— Metro 经 `getPolyfills()` 注入 `console.js` + `error-guard.js` 两个文件，而 `jest-preset` 只直接 import `error-guard` 子路径，故 Jest 里 `console.*` 是 Node 原生实现、`console.error → RN$handleException` 那条链不存在；**【PLY-4/PLY-5/PLY-6】`console.js` 的三处口径** —— `formatValue` 有 200 次**全树共享**上限（超额后返回一段字符串当属性值）、`console` 组装把 stub 放在 `...(originalConsole ?? {})` 之前（宿主优先）而 `error/log/table` 放在之后（无条件覆盖）、`groupCollapsed` 与 `groupEnd` 都用 `┘`；**【NAP-1】欢迎屏的可选链只保护了调用** —— `global.HermesInternal.getRuntimeProperties?.()['OSS Release Version']` 在「对象存在但没有该方法」（`flow/HermesInternalType.js` 明确允许）时索引 `undefined` 抛 `TypeError`；**【TLB-1】autolinking 夹具用「编译失败」当断言** —— `__tests__/TestLibraryAppleTests.cpp` 刻意 `#include` 不存在的头并 `static_assert(false, "...must not be compiled by the SPM autolinker")`，构建通过即证明它没被收进 target |
+| [82-调度层的两个分叉与无锁读.md](./82-调度层的两个分叉与无锁读.md) | **【RTS-2】`scheduleRenderingUpdate` 在两个分叉上语义完全相反** —— Legacy 直接调 `renderingUpdate()`，Modern 只 `pendingRenderingUpdates_.push()`；而 Modern 头文件还承诺「步骤未启用时立即执行」，实现里没有这个分支，所以非任务期间产生的渲染更新要等下一个 JS 任务结束才排空；**【RTS-3】Legacy 的 `getShouldYield()` 只回答「有没有别的线程在等运行时」**（`runtimeAccessRequests_ > 0`），不看任务队列，于是 bridge 架构下排队中的更高优先级任务不会让 JS 让出；**【RTS-5 + RTS-11】两个分叉的错误处理相反** —— Modern 一次任务抛错就 `clearQueues()` 清空全部队列与待处理渲染更新，Legacy 只上报不清队列；而 Legacy 的 `isPerformingWork_` 是裸赋值、`onTaskError_` 就在 catch 内，处理器一抛异常这个门禁永久为 true，此后所有 `scheduleTask` 都不再调度且无日志；**【SCH-2】`SurfaceHandler` 的 `Parameters` 组声称「读只要 shared lock」，却有 1 处无锁写（`setContextContainer`）与 3 处无锁读**；**【SCH-4】`SurfaceManager::stopSurface` 对未注册 surface 仍执行 `registry_.erase(registry_.find(id))`** —— 重复 stop 即 `erase(end())`；**【RTS-8】** `unstable_scheduleCallback` 的 arity 声明为 3 却不读第 3 个参数，`{delay}` 被静默忽略 |
 | [INDEX/](./INDEX/00-主题地图.md) | **检索索引（脚本生成）**：主题地图 / 症状排查手册 / 结论速查表 / 符号与源码入口 |
 | [audit/](./audit/) | 事实校验工具、模块覆盖清单与覆盖度分析（见下文「事实保证」） |
 
@@ -153,12 +154,12 @@ node docs/arch/audit/check-index.mjs       # 6) 索引体系：front-matter / �
 **当前状态（实测）：**
 
 ```
-引用 3487 条全部有效（3164 条带行号 + 323 条纯路径）
-代码块 1248 个 / 8442 行校验, 0 存疑
-文档间链接 564 条, 0 断链, 0 重复表格行
-核心事实断言 1674 条, 全部与源码一致
-索引  81 篇文档 / 8 个主题域 / 37 个子主题 / 17 类症状 / 577 条结论登记，0 问题
-已读 1021 / 4176 个非测试代码文件（24.4%）
+引用 3643 条全部有效（3310 条带行号 + 333 条纯路径）
+代码块 1286 个 / 8758 行校验, 0 存疑
+文档间链接 573 条, 0 断链, 0 重复表格行
+核心事实断言 1710 条, 全部与源码一致
+索引  82 篇文档 / 8 个主题域 / 37 个子主题 / 17 类症状 / 603 条结论登记，0 问题
+已读 1047 / 4176 个非测试代码文件（25.1%）
 ```
 
 > **重要**：前四项门禁只保证「引用的东西存在、贴的代码没造假」，
@@ -178,12 +179,12 @@ node docs/arch/audit/check-index.mjs       # 6) 索引体系：front-matter / �
 ```
 计入范围的代码文件:   4176   （已排除 785 个预编译/示例/类型声明/mock）
 manifest 声明覆盖:   4009   (96.0%)
-已读并被文档引用:     1021   (24.4%)
-模块缺口:            2988
+已读并被文档引用:     1047   (25.1%)
+模块缺口:            2962
 未被任何模块声明:      167   (4.0%)  → audit/unclaimed.json
 ```
 
-**恒等式校验**：`1021 已读 + 2988 缺口 + 167 未声明 = 4176` ✅
+**恒等式校验**：`1047 已读 + 2962 缺口 + 167 未声明 = 4176` ✅
 
 `status: done` 的严格含义是「**该目录下全部非测试文件都已读过且已成文**」，
 不是「这个主题写过」。`readFiles` 与 `fileCount` 的差值即为剩余缺口。
@@ -191,12 +192,12 @@ manifest 声明覆盖:   4009   (96.0%)
 ### 阅读计划（按优先级 + 前置依赖排序）
 
 完整计划见 [`audit/READ-PLAN.md`](./audit/READ-PLAN.md)，那里有 **37 个模块 × 缺口的逐项对账表**
-（合计 2988 = 实测值）。批次概览：
+（合计 2962 = 实测值）。批次概览：
 
 | 批次 | 主题 | 模块数 | 缺口 | 前置 |
 | --- | --- | --- | --- | --- |
 | **P0** | 基础设施补齐（Renderer 基础设施 / 错误处理 / 事件循环与性能计时 / 杂项包） | 4 | 63 | 无 |
-| **P1** | 渲染器核心 + iOS 平台实现（含 iOS 剩余） | 3 | 300 | A1 → C1 |
+| **P1** | 渲染器核心 + iOS 平台实现（含 iOS 剩余） | 3 | 274 | A1 → C1 |
 | **P2** | Fabric 组件层 + 通用视图组件 | 2 | 258 | A1 |
 | **P3** | Android 平台层 + JNI 胶水层 + Android 根级 API | 3 | 635 | A2 + A3 |
 | **P4** | JS 启动装配 + 运行时与 JS 引擎接口 + 内存管理 | 3 | 124 | A5 → A3 |

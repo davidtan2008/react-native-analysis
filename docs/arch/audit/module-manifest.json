@@ -40,17 +40,18 @@
         "packages/react-native/ReactCommon/react/renderer/runtimescheduler"
       ],
       "fileCount": 167,
-      "readFiles": 39,
+      "readFiles": 65,
       "status": "partial",
       "docs": [
         "02",
         "03",
         "09",
         "53",
-        "58"
+        "58",
+        "82"
       ],
-      "note": "A1 已读 13。本轮读 LayoutableShadowNode 的命中测试变换段（:287-303）",
-      "gap": 128,
+      "note": "A1 已读 13。本轮读 LayoutableShadowNode 的命中测试变换段（:287-303）；再读 renderer/scheduler/ 全部 9 个代码文件 1588 行 + renderer/runtimescheduler/ 全部 17 个 2235 行 = 26 个文件 3823 行（产出 82 文档，26 条结论 SCH-1…SCH-10 / RTS-1…RTS-16）",
+      "gap": 102,
       "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
     },
     {
@@ -901,7 +902,7 @@
           "C1",
           "E10"
         ],
-        "gap": 300
+        "gap": 274
       },
       {
         "n": 2,
@@ -997,7 +998,7 @@
         "gap": 234
       }
     ],
-    "totalGap": 2988
+    "totalGap": 2962
   },
   "docsIndex": {
     "07": {
