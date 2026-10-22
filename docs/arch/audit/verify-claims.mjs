@@ -12333,6 +12333,257 @@ addDocClaim('D217', '文档给出了哈希契约违反在 AttributedString 一�
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// 77 文档 · 测试工具层（ReactCommon/react/test_utils）
+//   TST-1 … TST-18
+// ────────────────────────────────────────────────────────────────────────
+{
+  const TU = 'packages/react-native/ReactCommon/react/test_utils';
+  const entropy = read(TU + '/Entropy.h') ?? '';
+  const clock = read(TU + '/MockClock.h') ?? '';
+  const mockSurface = read(TU + '/MockSurfaceHandler.h') ?? '';
+  const shadowGen = read(TU + '/shadowTreeGeneration.h') ?? '';
+  const swizzle = read(TU + '/ios/RCTSwizzleHelpers.m') ?? '';
+  const memUtils = read(TU + '/ios/Memory/RCTMemoryUtils.m') ?? '';
+  const shim = read(TU + '/ios/Shims/ShimRCTInstance.mm') ?? '';
+  const surfaceHandler = read('packages/react-native/ReactCommon/react/renderer/scheduler/SurfaceHandler.h') ?? '';
+
+  // ── TST-1：shuffle 按值传参 ──
+  add('C597', 'TST-1 核心：Entropy::shuffle 的签名是 `void shuffle(T array)`（按值传参），而注释写「Shuffles std::vector in place」—— 被打乱的是形参副本，调用方的数组完全不变，messWithChildren 的「随机打乱子节点顺序」从未生效',
+    '注释含 in place，签名为按值传参',
+    '注释 in place:' + entropy.includes('Shuffles `std::vector` in place.') +
+      ' / 签名为 T array:' + entropy.includes('void shuffle(T array) const') +
+      ' / 非引用:' + !entropy.includes('void shuffle(T &array) const'),
+    entropy.includes('Shuffles `std::vector` in place.') &&
+      entropy.includes('void shuffle(T array) const') &&
+      !entropy.includes('void shuffle(T &array) const') &&
+      entropy.includes('std::shuffle(array.begin(), array.end(), generator_);') &&
+      shadowGen.includes('entropy.shuffle(children);'));
+
+  // ── TST-2 / TST-3：random<T>() 返回 bool + T result 未初始化 ──
+  add('C598', 'TST-2 核心：Entropy::random<T>() 的无参重载返回 bool，而一参/二参重载返回 T —— 于是 entropy.random<int>() 只可能得到 0 或 1（int 的非零性），zIndex 的随机化实际只有两个取值',
+    '无参重载返回 bool，另两个返回 T',
+    '无参返回 bool:' + entropy.includes('bool random() const') +
+      ' / 一参返回 T:' + entropy.includes('T random(Arg1 arg1) const') +
+      ' / 二参返回 T:' + entropy.includes('T random(Arg1 arg1, Arg2 arg2) const'),
+    entropy.includes('bool random() const') &&
+      entropy.includes('T random(Arg1 arg1) const') &&
+      entropy.includes('T random(Arg1 arg1, Arg2 arg2) const') &&
+      shadowGen.includes('viewProps.zIndex = entropy.random<int>();'));
+
+  add('C599', 'TST-3：random<T>() 的三个重载都用 `T result;` —— 在传给 generateRandomValue 之前未初始化，依赖被调函数内部必定赋值',
+    '三个重载均为 `T result;`',
+    '出现次数: ' + (entropy.split('T result;').length - 1),
+    (entropy.split('T result;').length - 1) === 3);
+
+  // ── TST-4：distribute 的钳位上界 == 桶数 ──
+  add('C600', 'TST-4：distribute() 的钳位上界是 deviationLimit * 2，而桶数 spreadResult.size() 也是 deviationLimit * 2 —— index 等于桶数的元素被 `if (position < spreadResult.size())` 静默丢弃（边界语义不自洽）',
+    '钳位上界与桶数同源',
+    '钳位:' + entropy.includes('std::min(position, deviationLimit * 2)') +
+      ' / 桶数:' + entropy.includes('std::vector<std::vector<T>>(deviationLimit * 2)') +
+      ' / 保护:' + entropy.includes('if (position < spreadResult.size()) {'),
+    entropy.includes('std::min(position, deviationLimit * 2)') &&
+      entropy.includes('std::vector<std::vector<T>>(deviationLimit * 2)') &&
+      entropy.includes('if (position < spreadResult.size()) {'));
+
+  // ── TST-5：findRandomShadowNode 的区间前提错误 ──
+  const countFn = shadowGen.slice(shadowGen.indexOf('static int countShadowNodes'), shadowGen.indexOf('static ShadowTreeEdge findShadowNodeWithIndex'));
+  add('C601', 'TST-5 核心：findRandomShadowNode 用 entropy.random<int>(1 /* Excluding a root node */, count - 1)，但 countShadowNodes 的回调只对子节点触发 —— count 不含根节点，后代索引是 0 基，故区间本就漏掉第 0 个后代，且 count ≤ 1 时构造出 uniform_int_distribution<int>(1, 0)（min > max，标准规定为未定义行为）',
+    '区间上界为 count-1 且 count 不含根',
+    '区间:' + shadowGen.includes('entropy.random<int>(1 /* Excluding a root node */, count - 1)') +
+      ' / count 只计子节点:' + countFn.includes('traverseShadowTree(rootShadowNode') &&
+      !countFn.includes('counter++;\n\n  return counter;\n}\n\nstatic ShadowTreeEdge') === false,
+    shadowGen.includes('entropy.random<int>(1 /* Excluding a root node */, count - 1)') &&
+      countFn.includes('traverseShadowTree(rootShadowNode') &&
+      shadowGen.includes('callback(ShadowTreeEdge{childNode, parentShadowNode, index}, stop);') &&
+      shadowGen.includes('auto index = int{0};'));
+
+  // ── TST-6：alterShadowTree 空列表 ──
+  add('C602', 'TST-6：alterShadowTree 的 vector 重载用 entropy.random<int>(0, alterations.size() - 1) 取下标，空列表时 size() - 1 下溢为 -1，构造出 uniform_int_distribution<int>(0, -1)（min > max），随后 alterations[i] 越界访问空 vector',
+    '下界为 0、上界为 size()-1，无空列表防护',
+    '存在该表达式:' + shadowGen.includes('entropy.random<int>(0, alterations.size() - 1)') +
+      ' / 无空列表检查:' + !shadowGen.includes('if (alterations.empty())'),
+    shadowGen.includes('entropy.random<int>(0, alterations.size() - 1)') &&
+      !shadowGen.includes('if (alterations.empty())'));
+
+  // ── TST-7：traverseShadowTree 无深度限制 ──
+  add('C603', 'TST-7：traverseShadowTree 每层递归一次自身，无深度上限（与 64 文档 DDD-2 同型），影子树深度由被测代码决定',
+    '存在自递归且无深度参数',
+    '自递归:' + shadowGen.includes('if (traverseShadowTree(childNode, callback)) {') +
+      ' / 无深度参数:' + !shadowGen.includes('maxDepth') && !shadowGen.includes('depth'),
+    shadowGen.includes('if (traverseShadowTree(childNode, callback)) {') &&
+      !shadowGen.includes('maxDepth'));
+
+  // ── TST-8：generateReactTag 的每 TU 计数器 ──
+  add('C604', 'TST-8：generateReactTag 的计数器是头文件里函数内的 static Tag tag = 1000 —— 每个包含该头文件的 TU 各有一份，都从 1000 开始，而 Tag 是 ShadowNodeFamily 的身份标识',
+    '函数内 static 计数器，且定义在头文件',
+    '计数器:' + shadowGen.includes('static Tag tag = 1000;') +
+      ' / 函数为 static:' + shadowGen.includes('static Tag generateReactTag()'),
+    shadowGen.includes('static Tag tag = 1000;') &&
+      shadowGen.includes('static Tag generateReactTag()'));
+
+  // ── TST-9：findShadowNodeWithIndex 越界静默返回空边 ──
+  add('C605', 'TST-9：findShadowNodeWithIndex 越界时返回默认构造的 ShadowTreeEdge（shadowNode 为 nullptr），而调用方 alterShadowTree 立刻 edge.shadowNode->getFamily() —— 空指针解引用，且越界没有任何信号',
+    '默认构造的边成员全为默认值',
+    'result 默认构造:' + shadowGen.includes('auto result = ShadowTreeEdge{};') +
+      ' / 成员默认值:' + shadowGen.includes('std::shared_ptr<const ShadowNode> shadowNode{nullptr};') +
+      ' / 调用方解引用:' + shadowGen.includes('edge.shadowNode->getFamily()'),
+    shadowGen.includes('auto result = ShadowTreeEdge{};') &&
+      shadowGen.includes('std::shared_ptr<const ShadowNode> shadowNode{nullptr};') &&
+      shadowGen.includes('edge.shadowNode->getFamily()'));
+
+  // ── TST-10 / TST-11：const_cast 与头文件里的 EXPECT_EQ ──
+  add('C606', 'TST-10：messWithLayoutableOnlyFlag 用 const_cast 去掉 cloneProps 返回的 const ViewProps 后直接改字段，绕过渲染器的 props 不可变性契约',
+    '存在 const_cast 去掉 const',
+    'const_cast:' + shadowGen.includes('const_cast<ViewProps &>(static_cast<const ViewProps &>(*newProps))'),
+    (shadowGen.match(/const_cast<ViewProps &>/g) ?? []).length >= 2 &&
+      shadowGen.includes('const_cast<ViewProps &>(static_cast<const ViewProps &>(*newProps))'));
+
+  add('C607', 'TST-11：属性清单长度被 EXPECT_EQ(properties.size(), 20) 锁死，且该断言写在头文件的辅助函数内部 —— 约束本身正确，但失败时归属辅助函数而非调用它的测试',
+    '断言存在且清单为 20 项',
+    '断言:' + shadowGen.includes('EXPECT_EQ(properties.size(), 20);'),
+    shadowGen.includes('EXPECT_EQ(properties.size(), 20);') &&
+      shadowGen.includes('It is not safe to add new Yoga properties to this list.'));
+
+  // ── TST-12：MockClock::time_ 双定义 + 全局命名空间 ──
+  const clockDef1 = read('packages/react-native/ReactCommon/react/renderer/animations/tests/LayoutAnimationTest.cpp') ?? '';
+  const clockDef2 = read('packages/react-native/ReactCommon/react/renderer/telemetry/tests/TransactionTelemetryTest.cpp') ?? '';
+  add('C608', 'TST-12 核心：MockClock::time_ 是头文件里声明的静态成员，但在两个测试 TU 里各定义了一次（LayoutAnimationTest.cpp 与 TransactionTelemetryTest.cpp）—— 同一二进制内即重复定义；且 MockClock 不在任何 namespace 内',
+    '两个定义点 + 类不在命名空间内',
+    '定义点 1:' + clockDef1.includes('MockClock::time_point MockClock::time_ = {};') +
+      ' / 定义点 2:' + clockDef2.includes('MockClock::time_point MockClock::time_ = {};') +
+      ' / 在命名空间内:' + clock.includes('namespace facebook::react'),
+    clockDef1.includes('MockClock::time_point MockClock::time_ = {};') &&
+      clockDef2.includes('MockClock::time_point MockClock::time_ = {};') &&
+      clock.includes('class MockClock {') &&
+      !clock.includes('namespace facebook::react') &&
+      !clock.includes('reset'));
+
+  // ── TST-13：getSurfaceId 非 virtual + 头文件零引用 ──
+  const getSidLine = surfaceHandler.split('\n').find(l => l.includes('getSurfaceId() const noexcept'));
+  let mockSurfaceRefs = 0;
+  const countRefs = dir => {
+    let ents;
+    try { ents = fs.readdirSync(dir, {withFileTypes: true}); } catch { return; }
+    for (const e of ents) {
+      if (e.name === 'node_modules' || e.name === '.git') continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { countRefs(p); continue; }
+      if (!/\.(cpp|cc|h|mm|m)$/.test(e.name)) continue;
+      const rel = path.relative(REPO, p);
+      if (rel.endsWith('test_utils/MockSurfaceHandler.h')) continue;
+      try {
+        const t = fs.readFileSync(p, 'utf8');
+        if (t.includes('MockSurfaceHandler')) mockSurfaceRefs++;
+      } catch {}
+    }
+  };
+  countRefs(path.join(REPO, 'packages'));
+  add('C609', 'TST-13 核心：MockSurfaceHandler 对 getSurfaceId 做了 MOCK_METHOD，但基类 SurfaceHandler::getSurfaceId() 不是 virtual —— gmock 生成的是新虚函数（遮蔽而非 override），通过基类指针调用走真实实现；且该头文件在 packages/ 下零引用',
+    '基类 getSurfaceId 非 virtual，且头文件零引用',
+    '基类行:' + (getSidLine ?? '').trim() +
+      ' / 非 virtual:' + !(getSidLine ?? '').includes('virtual') +
+      ' / 引用数:' + mockSurfaceRefs,
+    getSidLine != null && !getSidLine.includes('virtual') &&
+      surfaceHandler.includes('virtual void setDisplayMode(DisplayMode displayMode) const noexcept;') &&
+      mockSurface.includes('MOCK_METHOD(SurfaceId, getSurfaceId, (), (const, noexcept));') &&
+      mockSurfaceRefs === 0);
+
+  // ── TST-14：reset 再次 swizzle ──
+  const initBlock = shim.slice(shim.indexOf('- (instancetype)init'), shim.indexOf('- (void)reset'));
+  const resetBlock = shim.slice(shim.indexOf('- (void)reset'), shim.indexOf('- (instancetype)initWithDelegate'));
+  const swapCount = b => (b.match(/RCTSwizzleInstanceSelector\(/g) ?? []).length;
+  add('C610', 'TST-14 核心：ShimRCTInstance 的 init 交换三个 selector，而 reset 又交换同样三个 —— method_exchangeImplementations 是对合的，交换两次即还原，故 reset 之后 shim 不再拦截，而计数归零看起来像成功',
+    'init 与 reset 各交换 3 次同样的 selector',
+    'init 交换数:' + swapCount(initBlock) + ' / reset 交换数:' + swapCount(resetBlock),
+    swapCount(initBlock) === 3 && swapCount(resetBlock) === 3 &&
+      initBlock.includes('RCTSwizzleInstanceSelector([RCTInstance class], [ShimRCTInstance class], @selector(invalidate));') &&
+      resetBlock.includes('RCTSwizzleInstanceSelector([RCTInstance class], [ShimRCTInstance class], @selector(invalidate));') &&
+      resetBlock.includes('_initCount = 0;') &&
+      resetBlock.includes('_invalidateCount = 0;'));
+
+  // ── TST-15：weakShim 全局 __weak ──
+  add('C611', 'TST-15：ShimRCTInstance 用文件级 static __weak ShimRCTInstance *weakShim 记录计数目标 —— shim 释放后计数静默停止更新（对 nil 发消息），且多个实例互相覆盖同一个全局槽位',
+    '文件级 static __weak 单例槽',
+    '声明:' + shim.includes('static __weak ShimRCTInstance *weakShim = nil;') +
+      ' / 赋值:' + shim.includes('weakShim = self;') +
+      ' / 计数:' + shim.includes('weakShim.initCount++;'),
+    shim.includes('static __weak ShimRCTInstance *weakShim = nil;') &&
+      shim.includes('weakShim = self;') &&
+      shim.includes('weakShim.initCount++;') &&
+      shim.includes('weakShim.invalidateCount++;'));
+
+  // ── TST-16：swizzle 无检查 + 继承链 + 无还原函数 ──
+  add('C612', 'TST-16：RCTSwizzleInstanceSelector 对 class_getInstanceMethod 的返回值不做任何检查（selector 不存在时以 NULL 参与 method_exchangeImplementations）；该 API 沿继承链查找，可能交换到父类的方法；本目录也没有提供对应的还原函数',
+    '无空指针检查，且无 un-swizzle 入口',
+    '无检查:' + !swizzle.includes('if (originalMethod == NULL') &&
+      !swizzle.includes('NSAssert') +
+      ' / 无还原函数:' + !exists(TU + '/ios/RCTSwizzleHelpers.h') === false,
+    !swizzle.includes('NSAssert') &&
+      !swizzle.includes('== NULL') &&
+      swizzle.includes('Method originalMethod = class_getInstanceMethod(targetClass, selector);') &&
+      swizzle.includes('method_exchangeImplementations(originalMethod, swizzleMethod);') &&
+      !shim.includes('RCTUnswizzleInstanceSelector'));
+
+  // ── TST-17：半公开 API + Release 下 assert 失效 ──
+  add('C613', 'TST-17：RCTMemoryUtils.m 自己用 OBJC_EXPORT 重新声明了 objc_autoreleasePoolPush / objc_autoreleasePoolPop（说明它们不在公开头文件里），且 RCTAutoReleasePoolPop 用 assert 守护「栈非空」—— Release 下断言被编译掉，栈空时会调用 objc_autoreleasePoolPop(NULL)',
+    '自行 OBJC_EXPORT 声明 + assert 守护栈非空',
+    'OBJC_EXPORT:' + memUtils.includes('OBJC_EXPORT') +
+      ' / assert 栈非空:' + memUtils.includes('assert(contextStack.count > 0);'),
+    memUtils.includes('OBJC_EXPORT') &&
+      memUtils.includes('void *objc_autoreleasePoolPush(void) __OSX_AVAILABLE_STARTING(__MAC_10_7, __IPHONE_5_0);') &&
+      memUtils.includes('assert(contextStack.count > 0);') &&
+      memUtils.includes('objc_autoreleasePoolPop(lastContext.pointerValue);'));
+
+  // ── TST-18：OSS 构建文件零引用 ──
+  let cmakeGtest = 0;
+  let podspecRefs = 0;
+  const walkBuild = dir => {
+    let ents;
+    try { ents = fs.readdirSync(dir, {withFileTypes: true}); } catch { return; }
+    for (const e of ents) {
+      if (e.name === 'node_modules' || e.name === '.git') continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { walkBuild(p); continue; }
+      if (e.name === 'CMakeLists.txt' || e.name.endsWith('.cmake')) {
+        try {
+          const t = fs.readFileSync(p, 'utf8');
+          if (/gtest|GTest/.test(t)) cmakeGtest++;
+        } catch {}
+      }
+      if (e.name.endsWith('.podspec')) {
+        try {
+          const t = fs.readFileSync(p, 'utf8');
+          if (t.includes('test_utils')) podspecRefs++;
+        } catch {}
+      }
+    }
+  };
+  walkBuild(path.join(REPO, 'packages'));
+  add('C614', 'TST-18：test_utils 目录在 OSS 可见的构建系统里零引用 —— packages/ 下没有任何含 gtest/GTest 的 CMakeLists 或 .cmake，也没有任何 podspec 提到 test_utils —— 因此本目录的结论不影响 OSS 用户的产物，只影响内部测试的有效性',
+    'CMake 无 gtest 目标、podspec 无引用',
+    '含 gtest 的构建文件数:' + cmakeGtest + ' / 提到 test_utils 的 podspec 数:' + podspecRefs,
+    cmakeGtest === 0 && podspecRefs === 0);
+
+  // ── 文档侧 ──
+  addDocClaim('D241', '77 文档写明 shuffle 按值传参导致「in place」从未发生',
+    /按值传参/, {min: 1});
+  addDocClaim('D242', '77 文档写明 random<T>() 无参重载返回 bool 导致 zIndex 只取两个值',
+    /只得到\s*`?0`?\s*或\s*`?1`?/, {min: 1});
+  addDocClaim('D243', '77 文档写明 findRandomShadowNode 的区间前提错误会导致 min > max',
+    /min > max/, {min: 1});
+  addDocClaim('D244', '77 文档写明 reset 会因为 method_exchangeImplementations 的对合性而撤销 swizzle',
+    /对合/, {min: 1});
+  addDocClaim('D245', '77 文档写明 MockClock::time_ 在两个 TU 里各定义一次',
+    /各定义一次/, {min: 1});
+  addDocClaim('D246', '77 文档写明 MockSurfaceHandler 的 getSurfaceId mock 因基类非 virtual 而无效',
+    /不是\s*`?virtual`?/, {min: 1});
+  addDocClaim('D247', '77 文档写明本目录在 OSS 的构建文件里零引用',
+    /零引用|没有任何引用/, {min: 1});
+  addDocClaim('D248', '「注释/命名承诺的行为与实现不符」这一形态在本仓反复出现',
+    /注释.{0,6}承诺|注释描述的能力不存在/, {min: 3});
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // 报告
 // ────────────────────────────────────────────────────────────────────────
 const fail = checks.filter(c => !c.ok);

@@ -6,13 +6,13 @@
 
 ## 检索入口
 
-> **本目录 76 篇文档按「主题 → 症状 → 结论 → 符号」四条路径组织，全部索引由脚本生成，禁止手写。**
+> **本目录 77 篇文档按「主题 → 症状 → 结论 → 符号」四条路径组织，全部索引由脚本生成，禁止手写。**
 
 | 入口 | 用途 | 从哪开始 |
 | --- | --- | --- |
 | **[00 · 主题地图](./INDEX/00-主题地图.md)** | **按主题域/子主题浏览** —— 8 个主题域、37 个子主题，每个子主题下列出覆盖它的文档、涉及的现象、平台与关键结论数量 | 「我要搞懂某个子系统」 |
 | **[01 · 症状排查手册](./INDEX/01-症状排查手册.md)** | **按现象排查** —— 17 类症状（崩溃/白屏/OOM/泄漏/启动变慢/卡顿/内容增长过快/布局/手势/动画/文本/桥接/属性/构建/调试/无障碍），每类列出相关文档与结论编号 | 「我遇到了某个问题」 |
-| **[02 · 结论速查表](./INDEX/02-结论速查表.md)** | **按结论编号直达** —— 全部 **477 条**编号结论（`ZZ-1` / `AAA-1` / `BBB-2` / `CCC-15` …）的摘要、源码位置与所属文档 | 「我记得有个结论编号」 |
+| **[02 · 结论速查表](./INDEX/02-结论速查表.md)** | **按结论编号直达** —— 全部 **495 条**编号结论（`ZZ-1` / `AAA-1` / `BBB-2` / `CCC-15` …）的摘要、源码位置与所属文档 | 「我记得有个结论编号」 |
 | **[03 · 符号与源码入口](./INDEX/03-符号与源码入口.md)** | **按符号/模块目录检索** —— 关键类与函数 → 讲解它的文档；模块 → 已读/缺口/文档 | 「我知道源码里的某个类」 |
 
 **每篇文档的 front-matter**（`topic` / `symptoms` / `symbols` / `claims` / `platforms` / `architecture` / `layer`）
@@ -101,6 +101,7 @@
 | [74-写方向与观察者的契约缺口.md](./74-写方向与观察者的契约缺口.md) | **【NNN-1 核心】写方向的 `header_.count` 是 `uint16_t` 且 `count++` 无上限检查** → 写超过 65535 个条目即**回绕** → **与 64 文档 DDD-3（读方向不校验）构成同一问题的两端**：写出的 buffer 的 count 与实际 bucket 数不符 → **读方向的二分查找上界 `hi = count_ - 1` 用错 → 越界读**；**【NNN-2 核心】写方向不检查重复 key**（`// TODO(T83483191): add pass to check for duplicates`）→ 读方向「找到第一个匹配就返回」→ **重复 key 且值不同时静默取到错误的值**（不是崩溃，更难发现）；**【NNN-3】值超限时 `abort()`**（不是抛异常）且**错误消息里的常量名（`MAX_VALUE_SIZE`）与实际常量名（`MAX_BUCKET_VALUE_SIZE`）不符** | **【NNN-4 核心】`PerformanceObserver` 的 `observedTypes_`（`unordered_set`）、`durationThreshold_`、`requiresDroppedEntries_` 三个成员无锁保护**，而 `buffer_` 与 registry 都有锁 → **并发读写 `unordered_set` 是 UB**；**「这个类有锁」会给人虚假的安全感** —— 比 69 文档「该加锁没加」更难发现；**【NNN-5 核心】两个 `observe` 重载语义不一致** —— 单类型版 `insert`（**累加**）+ 覆盖阈值、多类型版整体替换，**而注释明说「resets and overrides … remove any previous watch configuration (as per spec)」** → **注释与实现矛盾、与 spec 不符**；实际后果：连续 `observe(A,{t:100})` + `observe(B,{t:200})` → **A 类事件也开始用 200 阈值过滤** | **【NNN-6 核心】63 文档的「容差 vs 逐位」哈希契约违反在 `AttributedString` 一层继续传导**（四层链：`hash<AttributedString>` → `hash<Fragment>` → `hash<TextAttributes>` 逐位 ✗ vs `operator==` 链容差 ✓）→ **两个内容「相等」的富文本对象在哈希容器里是两个 key**；**但同时实测证明 `AttributedString`/`Fragment` 自身的字段集严格配对** → **即「问题不在这一层，而在被继承的下一层」**；另 **【NNN-7】observer 的 buffer 与 reporter 的无界 keyed 缓冲双份存储**、**【NNN-8】`getDroppedEntriesCount` 的「call time 快照」也拿不到 MARK/MEASURE 的丢弃信息**（66 文档盲区在两层都在）；**5 处正向样本**（`AttributedString` 字段集配对、三个比较函数语义分层、`scheduleFlushBuffer` 锁外回调、空 vector 的 memcpy 保护 + 第一档注释、`[[nodiscard]]`） |
 | [75-DevTools外壳的入口分叉与启动契约.md](./75-DevTools外壳的入口分叉与启动契约.md) | **【DSH-1 核心】入口分叉有两套判据且可能给出不同答案** —— `package.json` 的 `exports` 条件**按声明顺序**匹配（实测，含反序对照），`node` 写在 `electron` 之前 → **按包名解析命中 node 变体**；而 `packages/debugger-shell/src/index.js` 的运行时判断按 `process.versions.electron` 选 electron 变体 —— **全 RN 仓库只有这一个包用 `electron` 条件**，且 `publishConfig` 顺序相同（`prepack.js` 逐字段覆盖） | **【DSH-2 核心】`detached` 模式 Promise 在 `spawn` 即 resolve** → 后续 `close` 里的 `reject()` **失效** → **非零退出码无法经 Promise 上报**（`mode` 默认值就是 `detached`）；**【DSH-3 核心】`syncThenExit` 下 `silent` 为真时跳过 `process.exit(1)`** → 落到 `process.exit(null)` → **实测退出码 0** → **信号终止被报告为成功** | **【DSH-9 核心】实现与 `DevToolLauncher` 契约的三条 SHOULD 全部背离**（复用窗口无条件 `loadURL` 重载；`second-instance` 忽略第二实例的 `electronArgv` 改用第一实例的 `additionalData.argv`）—— **源码 TODO 自认**；**【DSH-5】错误分类完全依赖 fb-dotslash 的 stderr 英文子串**（4 个固定短语），上游改文案即静默降级；**【DSH-14】`SettingsStore.get` 的默认值语义是「值为 `undefined` 才回退」** → 配置里显式 `null` 会让调用方抛 `TypeError`；**【DSH-19】OSS 构建下 `BuildInfo.revision` 为 `null`** → 版本串 `0.87.0-main-null`；**【DSH-20】启动失败日志的 `?? 'Unknown error'` 兜底不可达**（`+` 优先级更高，实测）；**5 处正面样本**（`ELECTRON_RUN_AS_NODE` 剥离、错误码在消费端分 `logger.error`/`warn`、`BuildInfo.js.tpl` 的 ESM 互操作形状、4 个菜单命令 ID 在前端产物中均确认存在、`ui/legacy/legacy.js` 相对路径基准成立） |
 | [76-CLI工具层的四个缺陷与legacy桥的契约偏差.md](./76-CLI工具层的四个缺陷与legacy桥的契约偏差.md) | **【CLI-1 核心】`assemble` 构造了 `-PhermesEnabled` / `-PnewArchEnabled` 却把 `gradleArgs` 传给 `gradle()`** —— `args` 是从未被使用的局部变量；**同文件 8 行逐字相同、只差最后一个参数**（`build` 传对了）→ 复制粘贴缺陷，**不崩不报错、只是静默不生效**；**【CLI-2 核心】缓存清理扫的是 `path.dirname(directory)`** —— 实测 `os.tmpdir()='/tmp'` → `dirname` 为 `/`，**Metro/Haste/RN 三个缓存清理扫的是文件系统根目录**：真缓存在 `/tmp` 里删不掉，反而可能误删根目录同名条目；**【CLI-3 核心】`fs.rm` 不带 callback** → 实测返回 `undefined`（不是 Promise）并**异步抛未捕获 `TypeError`** → **清理越成功越崩溃**，且 `await` 捕获不到 | **【CLI-4 核心】`-o ${options.outputSourceMap}` 被拼成单个 argv** → `compose-source-maps.js` 严格比对 `argv[i]==='-o'`，实测 `outputPath` 恒 `undefined` → **合成后的 source map 从不写出**，而 `finally` 仍会删掉两份中间 map；**【CLI-5 核心】`require.resolve` 用了 `{cwd:[...]}`** —— Node 只认 `paths`，受控实验证明该选项被静默忽略，**全仓其它 4 处都用 `{paths}`**；且该函数有**两份逐字副本**（与 67 文档 GGG-1 同型）；**【CLI-6】`execa` 在全仓任何 `package.json` 里都未声明**，只作为 `@react-native-community/cli*` 的传递依赖存在；**【CLI-7】`isOnPath` 的 `exitCode === 0` 是死判定** —— execa 5.1.1 实测非零退出**抛异常**，「找不到」完全由 `catch` 决定 | **【CLI-8】`version.js` 的注释指向不存在的入口**（`versions.js` vs `version.js`，包名还少个 `s`）；**【CLI-9】发布的 `NODE_JS: '>= 18'` 比自身 `engines`（≥22.13）更宽松**；**【CLI-10】`checkPodfileInSyncWithManifest` 在 `try` 内自抛自捕** → 两条命令提示互相矛盾；**【CLI-12 核心】iOS 侧 `NSDataBigString::isAscii()` 恒 `false`** —— **补上 71 文档 KKK-1 缺失的平台维度**（Android 恒 `true` / iOS 恒 `false`，四个实现全是写死的常量，两端方向相反）；**【CLI-13】`size()` 违反基类「不含 NUL」契约**（多 1），null 结尾的前置条件只写在注释里、无校验；**【CLI-14 核心】`runSync` 用 `DISPATCH_TIME_FOREVER` 无界等待**，其前置条件只在析构 `RCTAssert` 里检查 → 与 69 文档 III-1 并列的**第三种并发形态：既无锁也无超时**；**4 处正面样本**（`assertDependencies` 的错误信息带依赖用途、默认执行器契约三分支写清、`Task.order` 被 rn-tester 真实消费、析构断言把契约做成可执行检查） |
+| [77-测试工具层的静默失效与内部构建边界.md](./77-测试工具层的静默失效与内部构建边界.md) | **【TST-1 核心】`shuffle(T array)` 按值传参** —— 注释写「Shuffles `std::vector` **in place**」而实现打乱的是**副本** → `messWithChildren` 的「随机打乱子节点顺序」**从未生效**（注释承诺的行为不存在）；**【TST-2 核心】`random<T>()` 无参重载返回 `bool`**（与一参/二参重载返回 `T` 不一致）→ `entropy.random<int>()` **只会得到 0 或 1** → `zIndex` 的随机化实际只有两个取值；**【TST-5 核心】`findRandomShadowNode` 的区间基于「count 含根节点」的误解** —— 实际 count **不含**根、后代索引 0 基 → 区间上界本就漏一个，且 **count ≤ 1 时 `uniform_int_distribution<int>(1, 0)` 的 min > max（标准规定为 UB）**；**【TST-14 核心】`ShimRCTInstance.reset` 会把 swizzle 撤销** —— `method_exchangeImplementations` 是**对合**的，再交换一次即还原 → **reset 之后 shim 不再拦截**，而计数归零看起来像成功；**【TST-12 核心】`MockClock::time_` 在两个 TU 里各定义一次**（同一二进制内即重复定义）且 `MockClock` 在**全局命名空间**、无 reset；**【TST-13 核心】`MockSurfaceHandler` 的 `getSurfaceId` mock 无效** —— 基类的 `getSurfaceId()` **不是 virtual**（gmock 生成的是遮蔽而非 override）→ 通过基类指针调用走真实实现；且**该头文件全仓零引用** | **TST-6** `alterations` 为空时构造 `uniform_int_distribution<int>(0, -1)` → UB + 越界访问；**TST-7** `traverseShadowTree` 是**无深度限制递归**（与 64 文档 DDD-2 同型）；**TST-8** `generateReactTag()` 的计数器是头文件里的函数内 static → **每个 TU 一份、都从 1000 开始** → 跨 TU 会撞 `Tag`；**TST-9** 索引越界时**静默返回 `shadowNode == nullptr` 的空边** → 调用方立刻空指针解引用；**TST-10** `const_cast` 去掉 `ViewProps` 的 const → 绕过 props 不可变性契约；**TST-15** `weakShim` 是**全局 `__weak`** → 释放后计数**静默停止更新**（与 66 文档 FFF-2 同型）；**TST-16** swizzle 无空指针检查 + `class_getInstanceMethod` **沿继承链查找**（可能交换到父类）+ **无还原函数**；**TST-17** `objc_autoreleasePoolPush/Pop` 由本仓库**自己 `OBJC_EXPORT` 声明**（说明不在公开头文件里）+ `assert` 在 Release 下失效 → `objc_autoreleasePoolPop(NULL)`；**TST-18 本目录在 OSS 的任何构建文件里零引用** → **不影响 OSS 产物**，但 TST-1/2/5/14 **直接削弱内部测试的覆盖强度**；**3 处正面样本**（属性清单长度被断言锁死且注释说明缘由、`messWithLayoutableOnlyFlag` 的字段扰动覆盖面、`RCTCxxBridgeDelegate` 式的契约三分支写法） |
 | [INDEX/](./INDEX/00-主题地图.md) | **检索索引（脚本生成）**：主题地图 / 症状排查手册 / 结论速查表 / 符号与源码入口 |
 | [audit/](./audit/) | 事实校验工具、模块覆盖清单与覆盖度分析（见下文「事实保证」） |
 
@@ -148,12 +149,12 @@ node docs/arch/audit/check-index.mjs       # 6) 索引体系：front-matter / �
 **当前状态（实测）：**
 
 ```
-引用 2992 条全部有效（2710 条带行号 + 282 条纯路径）
-代码块 1105 个 / 7488 行校验, 0 存疑
-文档间链接 523 条, 0 断链, 0 重复表格行
-核心事实断言 1559 条, 全部与源码一致
-索引  76 篇文档 / 8 个主题域 / 37 个子主题 / 17 类症状 / 477 条结论登记，0 问题
-已读 951 / 4176 个非测试代码文件（22.8%）
+引用 3060 条全部有效（2768 条带行号 + 292 条纯路径）
+代码块 1139 个 / 7703 行校验, 0 存疑
+文档间链接 528 条, 0 断链, 0 重复表格行
+核心事实断言 1585 条, 全部与源码一致
+索引  77 篇文档 / 8 个主题域 / 37 个子主题 / 17 类症状 / 495 条结论登记，0 问题
+已读 961 / 4176 个非测试代码文件（23.0%）
 ```
 
 > **重要**：前四项门禁只保证「引用的东西存在、贴的代码没造假」，
@@ -173,12 +174,12 @@ node docs/arch/audit/check-index.mjs       # 6) 索引体系：front-matter / �
 ```
 计入范围的代码文件:   4176   （已排除 785 个预编译/示例/类型声明/mock）
 manifest 声明覆盖:   4009   (96.0%)
-已读并被文档引用:      951   (22.8%)
-模块缺口:            3058
+已读并被文档引用:      961   (23.0%)
+模块缺口:            3048
 未被任何模块声明:      167   (4.0%)  → audit/unclaimed.json
 ```
 
-**恒等式校验**：`951 已读 + 3058 缺口 + 167 未声明 = 4176` ✅
+**恒等式校验**：`961 已读 + 3048 缺口 + 167 未声明 = 4176` ✅
 
 `status: done` 的严格含义是「**该目录下全部非测试文件都已读过且已成文**」，
 不是「这个主题写过」。`readFiles` 与 `fileCount` 的差值即为剩余缺口。
@@ -186,11 +187,11 @@ manifest 声明覆盖:   4009   (96.0%)
 ### 阅读计划（按优先级 + 前置依赖排序）
 
 完整计划见 [`audit/READ-PLAN.md`](./audit/READ-PLAN.md)，那里有 **37 个模块 × 缺口的逐项对账表**
-（合计 3058 = 实测值）。批次概览：
+（合计 3048 = 实测值）。批次概览：
 
 | 批次 | 主题 | 模块数 | 缺口 | 前置 |
 | --- | --- | --- | --- | --- |
-| **P0** | 基础设施补齐（Renderer 基础设施 / 错误处理 / 事件循环与性能计时 / 杂项包） | 4 | 133 | 无 |
+| **P0** | 基础设施补齐（Renderer 基础设施 / 错误处理 / 事件循环与性能计时 / 杂项包） | 4 | 123 | 无 |
 | **P1** | 渲染器核心 + iOS 平台实现（含 iOS 剩余） | 3 | 300 | A1 → C1 |
 | **P2** | Fabric 组件层 + 通用视图组件 | 2 | 258 | A1 |
 | **P3** | Android 平台层 + JNI 胶水层 + Android 根级 API | 3 | 635 | A2 + A3 |
