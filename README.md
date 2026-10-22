@@ -37,6 +37,32 @@ done
 
 ---
 
+### 网络不畅时（实测记录）
+
+克隆完整仓库约 **1.1G**（RN 历史约 1.0G，主仓库本体仅 18M）。`github.com:443` 在部分网络下间歇性超时（实测出现过 75s 连接失败），此时：
+
+- **clone 完但漏了 submodule** 不是静默错误：`check-index` 第一步就报 `SUBMODULE_MISSING`，按提示补即可。
+- RN submodule 拉取失败时，**换来源重试**（三种方式最终都落到同一个锁定 SHA）：
+
+```bash
+# ① 直接重试（每次都是全量，多试几次）
+git submodule update --init --recursive
+
+# ② 换成可达的镜像地址
+git config submodule.react-native.url <镜像地址>
+git submodule update --checkout react-native
+
+# ③ 复用本机已有的 react-native 克隆
+git config submodule.react-native.url /本机绝对路径/react-native
+git -c protocol.file.allow=always submodule update --checkout react-native
+```
+
+> 新版 git 出于安全默认**禁止本机路径作为 submodule 来源**（报 `transport 'file' not allowed`），因此 ③ 必须带 `-c protocol.file.allow=always`。
+
+不要用 `--depth 1 --shallow-submodules`：锁定的是历史提交（`9b131e42d12`，2026-09-29），而上游 main 已前移（实测 2026-10-22 的 HEAD 为 `5b6f18b0`），浅层历史里不含钉住的提交。
+
+---
+
 ## 仓库结构
 
 ```
