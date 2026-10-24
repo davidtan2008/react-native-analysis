@@ -13788,6 +13788,477 @@ addDocClaim('D217', '文档给出了哈希契约违反在 AttributedString 一�
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// 83 文档 · renderer/mounting
+//   MOU-1 … MOU-34
+// ────────────────────────────────────────────────────────────────────────
+{
+  const rd = p => fs.readFileSync(path.join(REPO, p), 'utf8');
+  const M = 'packages/react-native/ReactCommon/react/renderer/mounting/';
+  const treeCpp = rd(M + 'ShadowTree.cpp');
+  const treeH = rd(M + 'ShadowTree.h');
+  const coordCpp = rd(M + 'MountingCoordinator.cpp');
+  const coordH = rd(M + 'MountingCoordinator.h');
+  const differCpp = rd(M + 'Differentiator.cpp');
+  const svmCpp = rd(M + 'ShadowViewMutation.cpp');
+  const svmH = rd(M + 'ShadowViewMutation.h');
+  const svCpp = rd(M + 'ShadowView.cpp');
+  const svH = rd(M + 'ShadowView.h');
+  const mtCpp = rd(M + 'MountingTransaction.cpp');
+  const mtH = rd(M + 'MountingTransaction.h');
+  const umfCpp = rd(M + 'updateMountedFlag.cpp');
+  const tcCpp = rd(M + 'TelemetryController.cpp');
+  const regCpp = rd(M + 'ShadowTreeRegistry.cpp');
+  const delH = rd(M + 'ShadowTreeDelegate.h');
+  const overH = rd(M + 'MountingOverrideDelegate.h');
+  const revH = rd(M + 'ShadowTreeRevision.h');
+  const sliceCpp = rd(M + 'internal/sliceChildShadowNodeViewPairs.cpp');
+  const sliceH = rd(M + 'internal/sliceChildShadowNodeViewPairs.h');
+  const pairH = rd(M + 'internal/ShadowViewNodePair.h');
+  const cullCpp = rd(M + 'internal/CullingContext.cpp');
+  const stubsCpp = rd(M + 'stubs/stubs.cpp');
+  const svtCpp = rd(M + 'stubs/StubViewTree.cpp');
+  const svCppStub = rd(M + 'stubs/StubView.cpp');
+  const cmake = rd(M + 'CMakeLists.txt');
+  const primH = rd('packages/react-native/ReactCommon/react/renderer/core/ReactPrimitives.h');
+  const countOf = (h, n) => h.split(n).length - 1;
+  const slice = (s, a, b) => { const i = s.indexOf(a); return i < 0 ? '' : s.slice(i, i + b); };
+
+  // ── MOU-6 ──
+  add('C697', 'MOU-6：flag 关闭时 commit 是 while(true) 无界重试；唯一护栏 react_native_assert(attempts < 1024) 在 release 为空操作',
+    'while (true) + assert(attempts < 1024) + MAX=3',
+    'while(true):' + treeCpp.includes('while (true) {') +
+      ' / assert:' + treeCpp.includes('react_native_assert(attempts < 1024);') +
+      ' / MAX:' + treeCpp.includes('MAX_COMMIT_ATTEMPTS_BEFORE_LOCKING = 3'),
+    treeCpp.includes('while (true) {') &&
+      treeCpp.includes('react_native_assert(attempts < 1024);') &&
+      treeCpp.includes('MAX_COMMIT_ATTEMPTS_BEFORE_LOCKING = 3') &&
+      treeCpp.indexOf('if (ReactNativeFeatureFlags::preventShadowTreeCommitExhaustion())') <
+        treeCpp.indexOf('while (true) {'));
+
+  // ── MOU-7 ──
+  const commitFn = slice(treeCpp, 'CommitStatus ShadowTree::commit(', 1500);
+  add('C698', 'MOU-7：flag 开启时最多 3 次尝试，之后持 revisionMutexRecursive_ 的 unique_lock 再提交一次',
+    'attempts < MAX + unique_lock recursive + 顺序',
+    '循环:' + commitFn.includes('while (attempts < MAX_COMMIT_ATTEMPTS_BEFORE_LOCKING)') +
+      ' / 落锁:' + commitFn.includes('std::unique_lock lock(revisionMutexRecursive_);') +
+      ' / 顺序:' + (commitFn.indexOf('while (attempts < MAX_COMMIT_ATTEMPTS_BEFORE_LOCKING)') <
+        commitFn.indexOf('std::unique_lock lock(revisionMutexRecursive_);')),
+    commitFn.includes('while (attempts < MAX_COMMIT_ATTEMPTS_BEFORE_LOCKING)') &&
+      commitFn.includes('std::unique_lock lock(revisionMutexRecursive_);') &&
+      commitFn.indexOf('while (attempts < MAX_COMMIT_ATTEMPTS_BEFORE_LOCKING)') <
+        commitFn.indexOf('std::unique_lock lock(revisionMutexRecursive_);'));
+
+  // ── MOU-8 ──
+  const sharedLockFn = slice(treeCpp, 'inline ShadowTree::SharedLock ShadowTree::sharedRevisionLock', 400);
+  add('C699', 'MOU-8：两把锁并存；SharedLock 在新路径是 recursive_mutex 上的 unique_lock（无读并发）；头文件注释只提旧锁',
+    '双锁成员 + SharedLock 变体 + 新路径 unique_lock + 注释 revisionMutex_',
+    'shared_mutex:' + treeH.includes('mutable std::shared_mutex revisionMutex_;') +
+      ' / recursive:' + treeH.includes('mutable std::recursive_mutex revisionMutexRecursive_;') +
+      ' / SharedLock:' + treeH.includes('std::shared_lock<std::shared_mutex>, std::unique_lock<std::recursive_mutex>') +
+      ' / 共享锁分支:' + sharedLockFn.includes('std::unique_lock{revisionMutexRecursive_}'),
+    treeH.includes('mutable std::shared_mutex revisionMutex_;') &&
+      treeH.includes('mutable std::recursive_mutex revisionMutexRecursive_;') &&
+      treeH.includes('std::shared_lock<std::shared_mutex>, std::unique_lock<std::recursive_mutex>') &&
+      sharedLockFn.includes('std::unique_lock{revisionMutexRecursive_}'));
+
+  // ── MOU-9 ──
+  add('C700', 'MOU-9：非 react 分支号被改即 Failed；react 分支新号 = oldRevisionForStateProgression.number + 1，主分支 = currentRevision_.number + 1',
+    'CAS Failed + 两套编号',
+    'CAS:' + treeCpp.includes('if (!isReactBranch && currentRevision_.number != oldRevision.number)') +
+      ' / react 号:' + treeCpp.includes('oldRevisionForStateProgression.number + 1') +
+      ' / 主分支号:' + treeCpp.includes('currentRevision_.number + 1'),
+    treeCpp.includes('if (!isReactBranch && currentRevision_.number != oldRevision.number)') &&
+      treeCpp.includes('oldRevisionForStateProgression.number + 1') &&
+      treeCpp.includes('currentRevision_.number + 1'));
+
+  // ── MOU-10 ──
+  add('C701', 'MOU-10：react 分支用手动 std::visit(lock()) 延长锁写 currentReactRevision_，随后不 mount 而走 promotion 通知',
+    'visit lock + currentReactRevision_ + scheduleReactRevisionPromotion',
+    '手动锁:' + treeCpp.includes('std::visit([](auto& concreteLock) { concreteLock.lock(); }, lock);') +
+      ' / 写入:' + treeCpp.includes('currentReactRevision_ = newRevision;') +
+      ' / 通知:' + treeCpp.includes('scheduleReactRevisionPromotion();'),
+    treeCpp.includes('std::visit([](auto& concreteLock) { concreteLock.lock(); }, lock);') &&
+      treeCpp.includes('currentReactRevision_ = newRevision;') &&
+      treeCpp.includes('scheduleReactRevisionPromotion();'));
+
+  // ── MOU-11 ──
+  const accumFn = slice(treeCpp, 'inline bool isPropsUpdatesAccumulationGuaranteed()', 260);
+  add('C702', 'MOU-11：Android 读 enableAccumulatedUpdatesInRawPropsAndroid()，其他平台恒 true',
+    '#ifdef __ANDROID__ + 开关 + #else return true',
+    accumFn,
+    accumFn.includes('enableAccumulatedUpdatesInRawPropsAndroid()') &&
+      accumFn.includes('#ifdef __ANDROID__') &&
+      accumFn.includes('return true;'));
+
+  // ── MOU-12 ──
+  add('C703', 'MOU-12：两条 merge 路径（单个 promote / 逐个全并）；enableStateReconciliation 只给最后一个；merge 忽略 oldRoot 并以主分支 props 克隆',
+    'exchange + swap + isLast + ReactRevisionMerge + progressRootLayoutInfo',
+    '单值:' + treeCpp.includes('std::exchange(reactRevisionToBePromoted_, std::nullopt)') +
+      ' / 队列:' + treeCpp.includes('promotedReactRevisions_.swap(promotedRevisions)') +
+      ' / isLast:' + treeCpp.includes('.enableStateReconciliation = isLast,') +
+      ' / 布局兜底:' + treeCpp.includes('baseShadowNode.ShadowNode::clone('),
+    treeCpp.includes('std::exchange(reactRevisionToBePromoted_, std::nullopt)') &&
+      treeCpp.includes('promotedReactRevisions_.swap(promotedRevisions)') &&
+      treeCpp.includes('.enableStateReconciliation = isLast,') &&
+      treeCpp.includes('.source = CommitSource::ReactRevisionMerge,') &&
+      treeCpp.includes('baseShadowNode.ShadowNode::clone('));
+
+  // ── MOU-13 ──
+  add('C704', 'MOU-13：updateMountedFlag 在 EventEmitter::DispatchMutex() 下执行；ReactRevisionMerge 跳过置位防计数双增',
+    'scoped_lock DispatchMutex + merge 跳过 + double-increment',
+    '锁:' + treeCpp.includes('std::scoped_lock dispatchLock(EventEmitter::DispatchMutex());') +
+      ' / 跳过:' + umfCpp.includes('commitSource != ShadowTreeCommitSource::ReactRevisionMerge;') +
+      ' / 注释:' + umfCpp.includes('double-increment'),
+    treeCpp.includes('std::scoped_lock dispatchLock(EventEmitter::DispatchMutex());') &&
+      umfCpp.includes('commitSource != ShadowTreeCommitSource::ReactRevisionMerge;') &&
+      umfCpp.includes('double-increment'));
+
+  // ── MOU-14 ──
+  const setModeFn = slice(treeCpp, 'void ShadowTree::setCommitMode', 700);
+  add('C705', 'MOU-14：Suspended 时主分支 commit 不 mount；切回 Normal 时同步补挂非 INITIAL_REVISION 的当前 revision',
+    'commitMode Normal 分支 + setCommitMode 补挂',
+    '提交分支:' + treeCpp.includes('else if (commitMode == CommitMode::Normal) {') +
+      ' / 补挂条件:' + setModeFn.includes('commitMode == CommitMode::Normal && revision.number != INITIAL_REVISION') +
+      ' / 同步:' + setModeFn.includes('mount(revision, true);'),
+    treeCpp.includes('else if (commitMode == CommitMode::Normal) {') &&
+      setModeFn.includes('commitMode == CommitMode::Normal && revision.number != INITIAL_REVISION') &&
+      setModeFn.includes('mount(revision, true);'));
+
+  // ── MOU-15 ──
+  const emptyFn = slice(treeCpp, 'void ShadowTree::commitEmptyTree', 700);
+  add('C706', 'MOU-15：commitEmptyTree 用默认选项（mountSynchronously 默认 true）、notifyDelegatesOfUpdates 恒真；react 分支提交被断言禁止同步',
+    'default options + mountSynchronously true + notify true + assert',
+    '默认:' + emptyFn.includes('{/* default commit options */}') +
+      ' / 通知:' + treeCpp.includes('delegate_.shadowTreeDidFinishTransaction(mountingCoordinator_, true);') +
+      ' / 默认值:' + treeH.includes('bool mountSynchronously{true}') +
+      ' / 断言:' + treeCpp.includes('react_native_assert(!isReactBranch || !commitOptions.mountSynchronously)'),
+    emptyFn.includes('{/* default commit options */}') &&
+      treeCpp.includes('delegate_.shadowTreeDidFinishTransaction(mountingCoordinator_, true);') &&
+      treeH.includes('bool mountSynchronously{true}') &&
+      treeCpp.includes('react_native_assert(!isReactBranch || !commitOptions.mountSynchronously)'));
+
+  // ── MOU-16 ──
+  add('C707', 'MOU-16：push 仅接受号更大的 revision，否则静默丢弃；同号重复只有 debug 断言；revoke 清空 base/last',
+    'number < + assert != + revoke reset',
+    '只认更大:' + coordCpp.includes('lastRevision_->number < revision.number') +
+      ' / 同号断言:' + coordCpp.includes('!lastRevision_.has_value() || revision.number != lastRevision_->number') +
+      ' / 清根:' + coordCpp.includes('baseRevision_.rootShadowNode.reset();') +
+      ' / 清 optional:' + coordCpp.includes('lastRevision_.reset();'),
+    coordCpp.includes('lastRevision_->number < revision.number') &&
+      coordCpp.includes('!lastRevision_.has_value() || revision.number != lastRevision_->number') &&
+      coordCpp.includes('baseRevision_.rootShadowNode.reset();') &&
+      coordCpp.includes('lastRevision_.reset();'));
+
+  // ── MOU-17 ──
+  add('C708', 'MOU-17：pullTransaction 全程单锁；头文件要求消费方同线程；Android 仍从 JS 线程 pull 再异步上 UI',
+    'scoped_lock + willDiff<diff<didDiff + 同线程契约 + Android 注释',
+    '单锁:' + coordCpp.includes('std::scoped_lock lock(mutex_);') +
+      ' / 差分窗口:' + (coordCpp.indexOf('telemetry.willDiff();') < coordCpp.indexOf('calculateShadowViewMutations(') &&
+        coordCpp.indexOf('calculateShadowViewMutations(') < coordCpp.indexOf('telemetry.didDiff();')) +
+      ' / 同线程:' + coordH.includes('a consumer should always call it on the same thread') +
+      ' / Android:' + coordH.includes('from the JS thread and schedules the updates'),
+    coordCpp.includes('std::scoped_lock lock(mutex_);') &&
+      coordCpp.indexOf('telemetry.willDiff();') < coordCpp.indexOf('calculateShadowViewMutations(') &&
+      coordCpp.indexOf('calculateShadowViewMutations(') < coordCpp.indexOf('telemetry.didDiff();') &&
+      coordH.includes('a consumer should always call it on the same thread') &&
+      coordH.includes('from the JS thread and schedules the updates'));
+
+  // ── MOU-18 ──
+  const overrideArea = slice(coordCpp, '  // Override case', 3600);
+  const ovOrder = ['telemetry.willLayout();', 'telemetry.didLayout();', 'telemetry.willCommit();',
+    'telemetry.didCommit();', 'telemetry.willDiff();', 'telemetry.didDiff();']
+    .map(t => overrideArea.indexOf(t));
+  add('C709', 'MOU-18：override 遍历 weak_ptr；事务为空时合成六个遥测事件并 number_++，委托拿到空 mutation 列表',
+    'weak_ptr vector + 六事件有序 + number_++',
+    '弱引用:' + coordH.includes('std::vector<std::weak_ptr<const MountingOverrideDelegate>> mountingOverrideDelegates_;') +
+      ' / 六事件有序:' + ovOrder.every((n, i) => n >= 0 && (i === 0 || n > ovOrder[i - 1])) +
+      ' / 自增:' + (countOf(overrideArea, 'number_++;') === 1),
+    coordH.includes('std::vector<std::weak_ptr<const MountingOverrideDelegate>> mountingOverrideDelegates_;') &&
+      ovOrder.every((n, i) => n >= 0 && (i === 0 || n > ovOrder[i - 1])) &&
+      countOf(overrideArea, 'number_++;') === 1);
+
+  // ── MOU-19 ──
+  add('C710', 'MOU-19：introspection 用两棵「不用差分器」的树比对；override 事务只回放不比对；不一致 dump 后断言',
+    '两棵对照树构建 + override 跳过 + 断言文案',
+    'ctor+verify:' + (countOf(coordCpp, 'buildStubViewTreeWithoutUsingDifferentiator(') === 2) +
+      ' / 回放:' + coordCpp.includes('stubViewTree_.mutate(mutations);') +
+      ' / 跳过:' + coordCpp.includes('if (!didOverridePullTransaction && lastRevision_.has_value()) {') +
+      ' / 文案:' + coordCpp.includes('"Incorrect set of mutations detected."'),
+    countOf(coordCpp, 'buildStubViewTreeWithoutUsingDifferentiator(') === 2 &&
+      coordCpp.includes('stubViewTree_.mutate(mutations);') &&
+      coordCpp.includes('if (!didOverridePullTransaction && lastRevision_.has_value()) {') &&
+      coordCpp.includes('"Incorrect set of mutations detected."'));
+
+  // ── MOU-20 ──
+  add('C711', 'MOU-20：换代时旧 baseRevision 被 move 进空 lambda 交低优先级线程析构；hasPendingTransactionsOverride_ 按异步参数回填',
+    'LowPriorityExecutor 空 lambda + 赋值',
+    '空 lambda:' + coordCpp.includes('LowPriorityExecutor::execute([toDelete = std::move(baseRevision_)]() {});') +
+      ' / 回填:' + coordCpp.includes('hasPendingTransactionsOverride_ = willPerformAsynchronously;'),
+    coordCpp.includes('LowPriorityExecutor::execute([toDelete = std::move(baseRevision_)]() {});') &&
+      coordCpp.includes('hasPendingTransactionsOverride_ = willPerformAsynchronously;'));
+
+  // ── MOU-21 ──
+  const bucketArea = slice(differCpp, '// All mutations in an optimal order:', 1300);
+  const bucketOrder = ['destructiveDownwardMutations.begin()', 'updateMutations.begin()',
+    'removeMutations.rbegin()', 'deleteMutations.begin()', 'createMutations.begin()',
+    'downwardMutations.begin()', 'insertMutations.begin()'].map(t => bucketArea.indexOf(t));
+  add('C712', 'MOU-21：七桶输出序，remove 是唯一反序桶；根 Update parentTag 传 {}（0）且先于 reserve(256)；入口断言同 family',
+    '七桶有序 + rbegin + reserve 在根 Update 后 + sameFamily',
+    '七桶有序:' + bucketOrder.every((n, i) => n >= 0 && (i === 0 || n > bucketOrder[i - 1])) +
+      ' / 反序:' + bucketArea.includes('removeMutations.rbegin()') +
+      ' / reserve 在后:' + (differCpp.indexOf('oldRootShadowView, newRootShadowView, {})') < differCpp.indexOf('mutations.reserve(256);')) +
+      ' / 同 family:' + differCpp.includes('ShadowNode::sameFamily(oldRootShadowNode, newRootShadowNode)'),
+    bucketOrder.every((n, i) => n >= 0 && (i === 0 || n > bucketOrder[i - 1])) &&
+      bucketArea.includes('removeMutations.rbegin()') &&
+      differCpp.indexOf('oldRootShadowView, newRootShadowView, {})') < differCpp.indexOf('mutations.reserve(256);') &&
+      differCpp.includes('ShadowNode::sameFamily(oldRootShadowNode, newRootShadowNode)'));
+
+  // ── MOU-22 ──
+  add('C713', 'MOU-22：treeChildren.size() 条件重复两遍；unflatten 的 Update 是 TODO 自认冗余；ReparentMode 定义在 .cpp',
+    '重复条件 + 冗余 TODO + enum 在 cpp',
+    '重复:' + differCpp.includes('index < treeChildren.size() && index < treeChildren.size()') +
+      ' / TODO:' + differCpp.includes('so this update is redundant. We should remove this.') +
+      ' / enum:' + differCpp.includes('enum class ReparentMode { Flatten, Unflatten };'),
+    differCpp.includes('index < treeChildren.size() && index < treeChildren.size()') &&
+      differCpp.includes('so this update is redundant. We should remove this.') &&
+      differCpp.includes('enum class ReparentMode { Flatten, Unflatten };'));
+
+  // ── MOU-23 ──
+  add('C714', 'MOU-23：静态子节点插到 startOfStaticIndex；非 concrete pair 用 (size_t)-1 哨兵；orderIndex 全 0 跳过排序；Hidden 跳过仅 Android（T153547836）',
+    'static insert + 哨兵 + isReorderNeeded + T153547836 + useTraitHiddenOnAndroid',
+    '静态插入:' + sliceCpp.includes('std::advance(it, startOfStaticIndex)') +
+      ' / 哨兵:' + sliceCpp.includes('static_cast<unsigned long>(-1)') +
+      ' / 全0:' + sliceCpp.includes('pair->shadowNode->getOrderIndex() != 0') +
+      ' / 任务号:' + sliceCpp.includes('T153547836') +
+      ' / Android 开关:' + sliceCpp.includes('useTraitHiddenOnAndroid()'),
+    sliceCpp.includes('std::advance(it, startOfStaticIndex)') &&
+      sliceCpp.includes('static_cast<unsigned long>(-1)') &&
+      sliceCpp.includes('pair->shadowNode->getOrderIndex() != 0') &&
+      sliceCpp.includes('T153547836') &&
+      sliceCpp.includes('useTraitHiddenOnAndroid()'));
+
+  // ── MOU-24 ──
+  add('C715', 'MOU-24：pair 恒等只比 shadowNode 指针；scope 是 deque；isConcreteView 的 trait 公式三要素',
+    'pair == + deque + FormsView/ForceFlatten/ChildrenFormStackingContext',
+    '恒等:' + pairH.includes('return this->shadowNode == rhs.shadowNode;') +
+      ' / deque:' + sliceH.includes('using ViewNodePairScope = std::deque<ShadowViewNodePair>;') +
+      ' / traits:' + (sliceCpp.includes('FormsView') && sliceCpp.includes('ForceFlattenView') &&
+        sliceCpp.includes('ChildrenFormStackingContext')),
+    pairH.includes('return this->shadowNode == rhs.shadowNode;') &&
+      sliceH.includes('using ViewNodePairScope = std::deque<ShadowViewNodePair>;') &&
+      sliceCpp.includes('FormsView') && sliceCpp.includes('ForceFlattenView') &&
+      sliceCpp.includes('ChildrenFormStackingContext'));
+
+  // ── MOU-25 ──
+  add('C716', 'MOU-25：剔除判据 = uncullable trait 例外 + 宽高 > 0 + 双 transform 后的相交测试 + 空布局例外',
+    'intersect + uncullable + hasLayout + getOverflowInsetFrame',
+    '相交:' + sliceCpp.includes('Rect::intersect(cullingContext.frame, overflowInsetFrame) != Rect{}') +
+      ' / uncullable:' + (sliceCpp.includes('Unstable_uncullableView') && sliceCpp.includes('Unstable_uncullableTrace')) +
+      ' / 空布局:' + sliceCpp.includes('hasLayout') +
+      ' / overflow 帧:' + sliceCpp.includes('getOverflowInsetFrame()') +
+      ' / 宽高门槛:' + cullCpp.includes('frame.size.width > 0 && frame.size.height > 0'),
+    sliceCpp.includes('Rect::intersect(cullingContext.frame, overflowInsetFrame) != Rect{}') &&
+      sliceCpp.includes('Unstable_uncullableView') && sliceCpp.includes('Unstable_uncullableTrace') &&
+      sliceCpp.includes('hasLayout') && sliceCpp.includes('getOverflowInsetFrame()') &&
+      cullCpp.includes('frame.size.width > 0 && frame.size.height > 0'));
+
+  // ── MOU-26 ──
+  add('C717', 'MOU-26：culling 只特判 ScrollViewShadowNode；outset floor 对称外扩；RTL 用内容宽减视图宽减 origin.x；其他节点 origin 回退 + transform 累乘',
+    'ScrollView cast + disableViewCulling + floor outset + RTL 公式 + permalink + Identity',
+    '特判:' + cullCpp.includes('dynamic_cast<const ScrollViewShadowNode*>') +
+      ' / 禁用:' + cullCpp.includes('disableViewCulling') +
+      ' / outset:' + cullCpp.includes('floor(cullingContext.frame.size.width * outsetRatio)') +
+      ' / RTL:' + (cullCpp.includes('contentBoundingRect.size.width') && cullCpp.includes('RCTScrollViewComponentView.mm#L579')) +
+      ' / Identity:' + cullCpp.includes('Transform::Identity()'),
+    cullCpp.includes('dynamic_cast<const ScrollViewShadowNode*>') &&
+      cullCpp.includes('disableViewCulling') &&
+      cullCpp.includes('floor(cullingContext.frame.size.width * outsetRatio)') &&
+      cullCpp.includes('contentBoundingRect.size.width') &&
+      cullCpp.includes('RCTScrollViewComponentView.mm#L579') &&
+      cullCpp.includes('Transform::Identity()'));
+
+  // ── MOU-27 ──
+  add('C718', 'MOU-27：入口短路比较两个 vector 的地址（死代码）；Stage 2/3 注释写成 State；先置 true 后置 false 以侦测 remount',
+    '&oldChildren == &newChildren + State 2/3 + setMounted 顺序',
+    '地址比较:' + umfCpp.includes('if (&oldChildren == &newChildren) {') +
+      ' / Lists are identical:' + umfCpp.includes('// Lists are identical, nothing to do.') +
+      ' / State 2:' + umfCpp.includes('// State 2: Mount new children.') +
+      ' / State 3:' + umfCpp.includes('// State 3: Unmount old children.') +
+      ' / 顺序:' + (umfCpp.indexOf('newChild->setMounted(true);') < umfCpp.indexOf('oldChild->setMounted(false);')),
+    umfCpp.includes('if (&oldChildren == &newChildren) {') &&
+      umfCpp.includes('// Lists are identical, nothing to do.') &&
+      umfCpp.includes('// State 2: Mount new children.') &&
+      umfCpp.includes('// State 3: Unmount old children.') &&
+      umfCpp.indexOf('newChild->setMounted(true);') < umfCpp.indexOf('oldChild->setMounted(false);'));
+
+  // ── MOU-28 ──
+  add('C719', 'MOU-28：TelemetryController 两处手写 lock/unlock，非 RAII；读照与写回之间夹三个回调与 incorporate',
+    'mutex_.lock 两次 + 无 lock_guard/scoped_lock + 窗口顺序',
+    '手写锁:' + (countOf(tcCpp, 'mutex_.lock();') === 2) +
+      ' / 无 RAII:' + (!tcCpp.includes('std::lock_guard') && !tcCpp.includes('std::scoped_lock')) +
+      ' / 窗口顺序:' + (tcCpp.indexOf('auto compoundTelemetry = compoundTelemetry_;') <
+        tcCpp.indexOf('compoundTelemetry.incorporate(telemetry, numberOfMutations);') &&
+        tcCpp.indexOf('compoundTelemetry.incorporate(telemetry, numberOfMutations);') <
+        tcCpp.indexOf('compoundTelemetry_ = compoundTelemetry;')),
+    countOf(tcCpp, 'mutex_.lock();') === 2 &&
+      !tcCpp.includes('std::lock_guard') && !tcCpp.includes('std::scoped_lock') &&
+      tcCpp.indexOf('auto compoundTelemetry = compoundTelemetry_;') <
+        tcCpp.indexOf('compoundTelemetry.incorporate(telemetry, numberOfMutations);') &&
+      tcCpp.indexOf('compoundTelemetry.incorporate(telemetry, numberOfMutations);') <
+        tcCpp.indexOf('compoundTelemetry_ = compoundTelemetry;'));
+
+  // ── MOU-29 ──
+  add('C720', 'MOU-29：Registry add 用 emplace、同 id 不覆盖；析构护栏是空操作 assert；visit/enumerate 持 shared_lock 调回调',
+    'emplace + 析构 assert + shared_lock x2 + stop 回调',
+    'emplace:' + regCpp.includes('registry_.emplace(shadowTree->getSurfaceId(), std::move(shadowTree));') +
+      ' / 析构:' + regCpp.includes('Deallocation of non-empty `ShadowTreeRegistry`.') +
+      ' / shared_lock:' + (countOf(regCpp, 'std::shared_lock lock(mutex_);') === 2) +
+      ' / stop:' + regCpp.includes('callback(*pair.second, stop);'),
+    regCpp.includes('registry_.emplace(shadowTree->getSurfaceId(), std::move(shadowTree));') &&
+      regCpp.includes('Deallocation of non-empty `ShadowTreeRegistry`.') &&
+      countOf(regCpp, 'std::shared_lock lock(mutex_);') === 2 &&
+      regCpp.includes('callback(*pair.second, stop);'));
+
+  // ── MOU-30 ──
+  add('C721', 'MOU-30：delegate 四方法中三个纯虚，唯一带空默认体的是 shadowTreeDidCommit（携带 affectedLayoutableNodes）',
+    '3 个 = 0 + affectedLayoutableNodes + 空体',
+    '纯虚数:' + countOf(delH, '= 0;') +
+      ' / 空体:' + delH.includes('affectedLayoutableNodes*/) const') +
+      ' / 回调名:' + delH.includes('shadowTreeDidFinishReactCommit'),
+    countOf(delH, '= 0;') === 3 &&
+      delH.includes('affectedLayoutableNodes*/) const') &&
+      delH.includes('shadowTreeDidFinishReactCommit'));
+
+  // ── MOU-31 ──
+  add('C722', 'MOU-31：MountingOverrideDelegate.h 的 include 在 #pragma once 之前；列表项「- Calling」残缺',
+    'include 先于 pragma + - Calling',
+    '顺序:' + (overH.indexOf('#include <react/cxxstableapi/FrameworksGuard.h>') < overH.indexOf('#pragma once')) +
+      ' / 残缺项:' + overH.includes('* - Calling') +
+      ' / 纯虚:' + overH.includes('shouldOverridePullTransaction() const = 0;'),
+    overH.indexOf('#include <react/cxxstableapi/FrameworksGuard.h>') < overH.indexOf('#pragma once') &&
+      overH.includes('* - Calling') &&
+      overH.includes('shouldOverridePullTransaction() const = 0;'));
+
+  // ── MOU-32 ──
+  add('C723', 'MOU-32：stubs/*.cpp 被 CMake 无条件 glob；两种建树入口并存；简化排序器自认故意拷贝且无条件 stable_sort',
+    'glob stubs + 两入口 + intentionally copied',
+    'glob:' + cmake.includes('stubs/*.cpp)') +
+      ' / 两入口:' + (stubsCpp.includes('buildStubViewTreeUsingDifferentiator') &&
+        stubsCpp.includes('buildStubViewTreeWithoutUsingDifferentiator')) +
+      ' / 拷贝自:' + stubsCpp.includes('intentionally copied from'),
+    cmake.includes('stubs/*.cpp)') &&
+      stubsCpp.includes('buildStubViewTreeUsingDifferentiator') &&
+      stubsCpp.includes('buildStubViewTreeWithoutUsingDifferentiator') &&
+      stubsCpp.includes('intentionally copied from'));
+
+  // ── MOU-33 ──
+  add('C724', 'MOU-33：回放断言含 Create 不重复、Insert 先 Remove（parentTag==kNoTag）、Remove 精确匹配 children[index]、Update 哈希一致；release 下 operator[] 会插 null',
+    '四组断言 + registry_[parentTag] + .at()',
+    'Create:' + svtCpp.includes('react_native_assert(!hasTag(tag));') +
+      ' / Insert:' + svtCpp.includes('childStubView->parentTag == kNoTag') +
+      ' / Remove:' + svtCpp.includes('children[mutation.index]->tag ==') +
+      ' / Update 哈希:' + svtCpp.includes('std::hash<ShadowView>{}((ShadowView)*oldStubView) ==') +
+      ' / operator[]:' + svtCpp.includes('auto parentStubView = registry_[parentTag];') +
+      ' / at:' + svtCpp.includes('registry_.at(tag)'),
+    svtCpp.includes('react_native_assert(!hasTag(tag));') &&
+      svtCpp.includes('childStubView->parentTag == kNoTag') &&
+      svtCpp.includes('children[mutation.index]->tag ==') &&
+      svtCpp.includes('std::hash<ShadowView>{}((ShadowView)*oldStubView) ==') &&
+      svtCpp.includes('auto parentStubView = registry_[parentTag];') &&
+      svtCpp.includes('registry_.at(tag)'));
+
+  // ── MOU-34 ──
+  add('C725', 'MOU-34：StubViewTree::operator== 只比 registry 尺寸 + 逐 tag；StubView::operator== 只比 props 与 layoutMetrics',
+    'size 比较 + props/layoutMetrics 两字段 + 无 tag 比较',
+    '尺寸:' + svtCpp.includes('lhs.registry_.size() != rhs.registry_.size()') +
+      ' / props:' + svCppStub.includes('if (lhs.props != rhs.props) {') +
+      ' / metrics:' + svCppStub.includes('if (lhs.layoutMetrics != rhs.layoutMetrics) {') +
+      ' / 无 tag 比较:' + !svCppStub.includes('lhs.tag != rhs.tag'),
+    svtCpp.includes('lhs.registry_.size() != rhs.registry_.size()') &&
+      svCppStub.includes('if (lhs.props != rhs.props) {') &&
+      svCppStub.includes('if (lhs.layoutMetrics != rhs.layoutMetrics) {') &&
+      !svCppStub.includes('lhs.tag != rhs.tag'));
+
+  // ── MOU-1 ──
+  add('C726', 'MOU-1：Type 五个值是 1/2/4/8/16；字段默认 parentTag=kNoTag(-1)、index=-1；Create/Delete 用 kNoTag，Update index 恒 -1',
+    '枚举值 + 默认值 + kNoTag 定义 + 构造器哨兵',
+    '值:' + (svmH.includes('Create = 1') && svmH.includes('Delete = 2') && svmH.includes('Insert = 4') &&
+      svmH.includes('Remove = 8') && svmH.includes('Update = 16')) +
+      ' / 默认:' + (svmH.includes('Tag parentTag = kNoTag;') && svmH.includes('int index = -1;')) +
+      ' / kNoTag:' + primH.includes('constexpr Tag kNoTag = -1;') +
+      ' / Create/Delete:' + (countOf(svmCpp, '/* .parentTag = */ kNoTag,') === 2) +
+      ' / Update index:' + svmCpp.includes('/* .type = */ Update,'),
+    svmH.includes('Create = 1') && svmH.includes('Delete = 2') && svmH.includes('Insert = 4') &&
+      svmH.includes('Remove = 8') && svmH.includes('Update = 16') &&
+      svmH.includes('Tag parentTag = kNoTag;') && svmH.includes('int index = -1;') &&
+      primH.includes('constexpr Tag kNoTag = -1;') &&
+      countOf(svmCpp, '/* .parentTag = */ kNoTag,') === 2);
+
+  // ── MOU-2 ──
+  const virtualFn = slice(svmCpp, 'bool ShadowViewMutation::mutatedViewIsVirtual', 700);
+  add('C727', 'MOU-2：mutatedViewIsVirtual 只在 ANDROID 有逻辑且要求两侧 layoutMetrics 都是 EmptyLayoutMetrics；机制自述 DEPRECATED',
+    '#ifdef ANDROID + 两侧 Empty + DEPRECATED 注释',
+    '平台分支:' + virtualFn.includes('#ifdef ANDROID') +
+      ' / 双侧:' + (virtualFn.includes('newChildShadowView.layoutMetrics == EmptyLayoutMetrics &&') &&
+        virtualFn.includes('oldChildShadowView.layoutMetrics == EmptyLayoutMetrics')) +
+      ' / DEPRECATED:' + (svmH.includes('This mechanism is DEPRECATED') &&
+        svmH.includes('NOT make use of this')),
+    virtualFn.includes('#ifdef ANDROID') &&
+      virtualFn.includes('newChildShadowView.layoutMetrics == EmptyLayoutMetrics &&') &&
+      virtualFn.includes('oldChildShadowView.layoutMetrics == EmptyLayoutMetrics') &&
+      svmH.includes('This mechanism is DEPRECATED') &&
+      svmH.includes('NOT make use of this'));
+
+  // ── MOU-3 ──
+  const hashFn = slice(svH, 'struct hash<facebook::react::ShadowView>', 600);
+  add('C728', 'MOU-3：== 比 7 字段含 componentName 不含 componentHandle；hash 组合 componentHandle 不含 componentName',
+    '== 含 name / hash 含 handle / hash 函数体内不含 name',
+    '== name:' + svCpp.includes('this->componentName,') +
+      ' / == 无 handle:' + !svCpp.includes('this->componentHandle,') +
+      ' / hash handle:' + hashFn.includes('shadowView.componentHandle,') +
+      ' / hash 无 name:' + !hashFn.includes('componentName'),
+    svCpp.includes('this->componentName,') && !svCpp.includes('this->componentHandle,') &&
+      hashFn.includes('shadowView.componentHandle,') && !hashFn.includes('componentName'));
+
+  // ── MOU-4 ──
+  add('C729', 'MOU-4：事务号从 1 起（0 表示首事务前）；moved-from 访问 UB；const getTelemetry 返回可变引用；mergeWith 用对方号并覆盖 telemetry（TODO T186641819）',
+    'from 1 + moved-from UB + mutable telemetry + mergeWith',
+    '号:' + mtH.includes('grows continuously starting from `1`') +
+      ' / UB:' + mtH.includes('moved-from object of this type has unspecified value') +
+      ' / mutable:' + mtH.includes('mutable TransactionTelemetry telemetry_;') +
+      ' / 号取对方:' + mtCpp.includes('number_ = transaction.getNumber();') +
+      ' / TODO:' + mtCpp.includes('TODO T186641819'),
+    mtH.includes('grows continuously starting from `1`') &&
+      mtH.includes('moved-from object of this type has unspecified value') &&
+      mtH.includes('mutable TransactionTelemetry telemetry_;') &&
+      mtCpp.includes('number_ = transaction.getNumber();') &&
+      mtCpp.includes('TODO T186641819'));
+
+  // ── MOU-5 ──
+  add('C730', 'MOU-5：ShadowTreeRevision 是 rootShadowNode/number/telemetry 三字段 POD，Number=int64_t；INITIAL_REVISION = 0',
+    '三字段 + int64_t + INITIAL_REVISION{0}',
+    '字段:' + (revH.includes('RootShadowNode::Shared rootShadowNode;') && revH.includes('TransactionTelemetry telemetry;')) +
+      ' / 类型:' + revH.includes('using Number = int64_t;') +
+      ' / 初值:' + treeH.includes('constexpr static ShadowTreeRevision::Number INITIAL_REVISION{0};'),
+    revH.includes('RootShadowNode::Shared rootShadowNode;') &&
+      revH.includes('TransactionTelemetry telemetry;') &&
+      revH.includes('using Number = int64_t;') &&
+      treeH.includes('constexpr static ShadowTreeRevision::Number INITIAL_REVISION{0};'));
+
+  // ── 文档侧 ──
+  addDocClaim('D297', '83 文档写明 flag 关闭时的无界重试与 release 空操作断言', /无界重试|无限忙循环/, {min: 1});
+  addDocClaim('D298', '83 文档写明两把互斥锁并存且新路径共享锁是排他锁', /两把互斥锁并存|「共享锁」实为|共享锁」其实是互斥锁/, {min: 1});
+  addDocClaim('D299', '83 文档写明 merge 的两条路径与 state reconciliation 只给最后一个', /只放行最后一个|仅\*\*最后一个\*\* revision 为 true/, {min: 1});
+  addDocClaim('D300', '83 文档写明 push 静默丢弃更小号 revision', /静默丢弃过时 revision|静默丢弃更小号/, {min: 1});
+  addDocClaim('D301', '83 文档写明 override 空事务合成全套假 telemetry', /合成全套假 telemetry|六个事件全部无事件调用/, {min: 1});
+  addDocClaim('D302', '83 文档写明 introspection 两棵对照树都不依赖差分器', /两棵对照树都不依赖差分器|不靠差分器/, {min: 1});
+  addDocClaim('D303', '83 文档写明七桶输出顺序与唯一的反序 remove', /七桶输出序|remove\*\*.*倒序|唯一反序桶/, {min: 1});
+  addDocClaim('D304', '83 文档写明 culling 只特判 ScrollView 且 RTL 公式', /只特判 ScrollView|culling = ScrollView culling/, {min: 1});
+  addDocClaim('D305', '83 文档写明 TelemetryController 手写锁非 RAII 与聚合窗口', /手写 `mutex_\.lock\(\)`|聚合窗口|读照到写回/, {min: 1});
+  addDocClaim('D306', '83 文档写明 updateMountedFlag 的地址比较是死代码', /比较的是\*\*引用绑定的 vector 对象地址\*\*|几乎恒 false/, {min: 1});
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // 报告
 // ────────────────────────────────────────────────────────────────────────
 const fail = checks.filter(c => !c.ok);
