@@ -14259,6 +14259,715 @@ addDocClaim('D217', '文档给出了哈希契约违反在 AttributedString 一�
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────
+// 84 文档 · renderer/uimanager
+//   UIM-1 … UIM-39
+// ────────────────────────────────────────────────────────────────────────
+{
+  const rd = p => fs.readFileSync(path.join(REPO, p), 'utf8');
+  const U = 'packages/react-native/ReactCommon/react/renderer/uimanager/';
+  const M = 'packages/react-native/ReactCommon/react/renderer/mounting/';
+  const uH = rd(U + 'UIManager.h');
+  const uC = rd(U + 'UIManager.cpp');
+  const uUS = rd(U + 'UIManagerUpdateShadowTree.cpp');
+  const bH = rd(U + 'UIManagerBinding.h');
+  const bC = rd(U + 'UIManagerBinding.cpp');
+  const peC = rd(U + 'PointerEventsProcessor.cpp');
+  const phC = rd(U + 'PointerHoverTracker.cpp');
+  const prim = rd(U + 'primitives.h');
+  const appC = rd(U + 'AppRegistryBinding.cpp');
+  const layH = rd(U + 'LayoutEventEmitter.h');
+  const layC = rd(U + 'LayoutEventEmitter.cpp');
+  const chH = rd(U + 'UIManagerCommitHook.h');
+  const mhH = rd(U + 'UIManagerMountHook.h');
+  const vtH = rd(U + 'UIManagerViewTransitionDelegate.h');
+  const srpH = rd(U + 'SurfaceRegistryBinding.h');
+  const cmake = rd(U + 'CMakeLists.txt');
+  const ccmake = rd(U + 'consistency/CMakeLists.txt');
+  const treeH = rd(M + 'ShadowTree.h');
+  const treeCpp = rd(M + 'ShadowTree.cpp');
+  const regC = rd(M + 'ShadowTreeRegistry.cpp');
+  const reacH = rd('packages/react-native/ReactCommon/react/renderer/core/ReactEventPriority.h');
+  const emitterH = rd('packages/react-native/ReactCommon/react/renderer/core/EventEmitter.h');
+  const shNodeC = rd('packages/react-native/ReactCommon/react/renderer/core/ShadowNode.cpp');
+  const countOf = (h, n) => h.split(n).length - 1;
+  const slice = (s, a, b) => { const i = s.indexOf(a); return i < 0 ? '' : s.slice(i, i + b); };
+  const orderOK = (s, a, b) => { const i = s.indexOf(a), j = s.indexOf(b); return i >= 0 && j > i; };
+  const outsideIf = (s, ifToken, targetToken) => {
+    const i = s.indexOf(ifToken);
+    if (i < 0) return false;
+    let depth = 0, end = -1;
+    for (let k = i; k < s.length; k++) {
+      if (s[k] === '{') depth++;
+      else if (s[k] === '}') { depth--; if (depth === 0) { end = k; break; } }
+    }
+    const t = s.indexOf(targetToken);
+    return end >= 0 && t > end;
+  };
+
+  // ── UIM-1 ──
+  const dtor = slice(uC, 'UIManager::~UIManager', 200);
+  const leakFn = slice(uC, 'constructLeakCheckerIfNeeded', 300);
+  add('C731', 'UIM-1：三个裸 delegate + weak nativeAnimated + debug-only LeakChecker；析构仅 WARNING；两个一致性 getter 返回同一对象',
+    '裸 delegate 3 / weak nativeAnimated / LeakChecker 仅 DEBUG / 析构 WARNING / 同一 getter 2 次',
+    'delegate:' + uH.includes('UIManagerDelegate *delegate_{};') +
+      ' anim:' + uH.includes('UIManagerAnimationDelegate *animationDelegate_{nullptr};') +
+      ' weak:' + uH.includes('std::weak_ptr<UIManagerNativeAnimatedDelegate> nativeAnimatedDelegate_;') +
+      ' vt:' + uH.includes('UIManagerViewTransitionDelegate *viewTransitionDelegate_{nullptr};') +
+      ' leak:' + uH.includes('std::unique_ptr<LeakChecker> leakChecker_;') +
+      ' debug:' + leakFn.includes('#ifdef REACT_NATIVE_DEBUG') +
+      ' warn:' + dtor.includes('LOG(WARNING)') +
+      ' getters:' + countOf(uC, 'return lazyShadowTreeRevisionConsistencyManager_.get();'),
+    uH.includes('UIManagerDelegate *delegate_{};') &&
+      uH.includes('UIManagerAnimationDelegate *animationDelegate_{nullptr};') &&
+      uH.includes('std::weak_ptr<UIManagerNativeAnimatedDelegate> nativeAnimatedDelegate_;') &&
+      uH.includes('UIManagerViewTransitionDelegate *viewTransitionDelegate_{nullptr};') &&
+      uH.includes('std::unique_ptr<LeakChecker> leakChecker_;') &&
+      leakFn.includes('#ifdef REACT_NATIVE_DEBUG') &&
+      dtor.includes('LOG(WARNING)') &&
+      countOf(uC, 'return lazyShadowTreeRevisionConsistencyManager_.get();') === 2);
+
+  // ── UIM-2 ──
+  const createFn = slice(uC, 'UIManager::createNode', 2400);
+  add('C732', 'UIM-2：createNode 用 component handle 判断 fallback 命中并注入 name prop，再通知 delegate/LeakChecker',
+    'handle 比较 / name prop / 两个回调',
+    'handle:' + createFn.includes('fallbackDescriptor->getComponentHandle() ==') +
+      ' name:' + createFn.includes('RawProps(folly::dynamic::object("name", name))') +
+      ' delegate:' + createFn.includes('delegate_->uiManagerDidCreateShadowNode(*shadowNode);') +
+      ' leak:' + createFn.includes('leakChecker_->uiManagerDidCreateShadowNodeFamily(family);'),
+    createFn.includes('fallbackDescriptor->getComponentHandle() ==') &&
+      createFn.includes('RawProps(folly::dynamic::object("name", name))') &&
+      createFn.includes('delegate_->uiManagerDidCreateShadowNode(*shadowNode);') &&
+      createFn.includes('leakChecker_->uiManagerDidCreateShadowNodeFamily(family);'));
+
+  // ── UIM-3 ──
+  const cloneFn = slice(uC, 'UIManager::cloneNode', 2800);
+  add('C733', 'UIM-3：cloneNode 两次 merge，Ignore 更新 nativeProps、Override 让 nativeProps 覆盖 rawProps；克隆 runtimeShadowNodeReference=false',
+    'Ignore=1 / Override=1 / Ignore 在前 / nativeProps 优先 / runtimeRef=false',
+    'Ignore:' + countOf(cloneFn, 'NullValueStrategy::Ignore') +
+      ' Override:' + countOf(cloneFn, 'NullValueStrategy::Override') +
+      ' order:' + orderOK(cloneFn, 'NullValueStrategy::Ignore', 'NullValueStrategy::Override') +
+      ' precedence:' + cloneFn.includes('now takes precedence') +
+      ' runtimeRef:' + cloneFn.includes('runtimeShadowNodeReference = false'),
+    cloneFn.includes('std::lock_guard<std::mutex> lock(family.nativePropsMutex);') &&
+      countOf(cloneFn, 'NullValueStrategy::Ignore') === 1 &&
+      countOf(cloneFn, 'NullValueStrategy::Override') === 1 &&
+      orderOK(cloneFn, 'NullValueStrategy::Ignore', 'NullValueStrategy::Override') &&
+      cloneFn.includes('now takes precedence') &&
+      cloneFn.includes('runtimeShadowNodeReference = false'));
+
+  // ── UIM-4 ──
+  const setNativeFn = slice(uC, 'UIManager::setNativeProps_DEPRECATED', 2400);
+  add('C734', 'UIM-4：setNativeProps 用 Override（rawProps 覆盖 nativeProps），祖先快照在 commit 前取且 getProps 不判空',
+    'Override=1 / 祖先在 commit 前 / 解引用无判空',
+    'Override:' + countOf(setNativeFn, 'NullValueStrategy::Override') +
+      ' ancestorBeforeCommit:' + orderOK(setNativeFn, 'auto ancestorShadowNode =', 'shadowTree.commit(') +
+      ' subtree:' + setNativeFn.includes('getShadowNodeInSubtree(*shadowNode, ancestorShadowNode)') +
+      ' props:' + setNativeFn.includes('->getProps()'),
+    countOf(setNativeFn, 'NullValueStrategy::Override') === 1 &&
+      orderOK(setNativeFn, 'auto ancestorShadowNode =', 'shadowTree.commit(') &&
+      setNativeFn.includes('getShadowNodeInSubtree(*shadowNode, ancestorShadowNode)') &&
+      setNativeFn.includes('->getProps()'));
+
+  // ── UIM-5 ──
+  const startFn = slice(uC, 'UIManager::startSurface', 1000);
+  add('C735', 'UIM-5：startSurface 顺序 add → visit(delegate) → runtimeExecutor；delegate 在 registry 共享锁内',
+    'add < visit < runtimeExecutor / didStartSurface / registry shared_lock',
+    'order1:' + orderOK(startFn, 'shadowTreeRegistry_.add(', 'shadowTreeRegistry_.visit(') +
+      ' order2:' + orderOK(startFn, 'shadowTreeRegistry_.visit(', 'runtimeExecutor_(') +
+      ' delegate:' + startFn.includes('uiManagerDidStartSurface') +
+      ' shared:' + regC.includes('std::shared_lock lock(mutex_);'),
+    orderOK(startFn, 'shadowTreeRegistry_.add(', 'shadowTreeRegistry_.visit(') &&
+      orderOK(startFn, 'shadowTreeRegistry_.visit(', 'runtimeExecutor_(') &&
+      startFn.includes('uiManagerDidStartSurface') &&
+      regC.includes('std::shared_lock lock(mutex_);'));
+
+  // ── UIM-6 ──
+  const stopFn = slice(uC, 'ShadowTree::Unique UIManager::stopSurface', 1800);
+  add('C736', 'UIM-6：stopSurface 五段顺序，clearRegistryOnSurfaceStop 在 if(shadowTree) 块之外',
+    'animation < remove < JS stop < leakchecker < clear / clear 在块外',
+    'order1:' + orderOK(stopFn, 'stopSurfaceForAnimationDelegate', 'getShadowTreeRegistry().remove') +
+      ' order2:' + orderOK(stopFn, 'getShadowTreeRegistry().remove', 'AppRegistryBinding::stopSurface') +
+      ' order3:' + orderOK(stopFn, 'AppRegistryBinding::stopSurface', 'leakChecker_->stopSurface') +
+      ' order4:' + orderOK(stopFn, 'leakChecker_->stopSurface', 'clearRegistryOnSurfaceStop') +
+      ' outside:' + outsideIf(stopFn, 'if (shadowTree) {', 'clearRegistryOnSurfaceStop'),
+    orderOK(stopFn, 'stopSurfaceForAnimationDelegate', 'getShadowTreeRegistry().remove') &&
+      orderOK(stopFn, 'getShadowTreeRegistry().remove', 'AppRegistryBinding::stopSurface') &&
+      orderOK(stopFn, 'AppRegistryBinding::stopSurface', 'leakChecker_->stopSurface') &&
+      orderOK(stopFn, 'leakChecker_->stopSurface', 'clearRegistryOnSurfaceStop') &&
+      outsideIf(stopFn, 'if (shadowTree) {', 'clearRegistryOnSurfaceStop'));
+
+  // ── UIM-7 ──
+  const completeFn = slice(uC, 'UIManager::completeSurface', 1700);
+  add('C737', 'UIM-7：completeSurface 的 result 未初始化；仅 Succeeded 更新 consistency/clearRegistry；completeRoot 写死三个选项',
+    '未初始化 / 仅 Succeeded / updateCurrentRevision / clearRegistry / 3 选项',
+    'uninit:' + completeFn.includes('ShadowTree::CommitStatus result;') +
+      ' success:' + completeFn.includes('if (result == ShadowTree::CommitStatus::Succeeded)') +
+      ' update:' + completeFn.includes('updateCurrentRevision(surfaceId)') +
+      ' clear:' + completeFn.includes('clearRegistry(surfaceId)') +
+      ' opts:' + bC.includes('.enableStateReconciliation = true,') +
+      bC.includes('.mountSynchronously = false,') + '/' + bC.includes('.source = ShadowTree::CommitSource::React'),
+    completeFn.includes('ShadowTree::CommitStatus result;') &&
+      completeFn.includes('if (result == ShadowTree::CommitStatus::Succeeded)') &&
+      completeFn.includes('updateCurrentRevision(surfaceId)') &&
+      completeFn.includes('clearRegistry(surfaceId)') &&
+      bC.includes('.enableStateReconciliation = true,') &&
+      bC.includes('.mountSynchronously = false,') &&
+      bC.includes('.source = ShadowTree::CommitSource::React'));
+
+  // ── UIM-8 ──
+  const updateStateFn = slice(uC, 'UIManager::updateState', 1900);
+  add('C738', 'UIM-8：UIManager 三处 commit + updateShadowTree 一处 commit 全在 registry 共享锁内',
+    'uC commit=3 / uUS commit=1 / visit+enumerate shared_lock=2 / add+remove unique_lock=2',
+    'uC:' + countOf(uC, 'shadowTree.commit(') + ' uUS:' + countOf(uUS, 'shadowTree.commit(') +
+      ' shared:' + countOf(regC, 'std::shared_lock lock(mutex_);') +
+      ' unique:' + countOf(regC, 'std::unique_lock lock(mutex_);') +
+      ' completeOrder:' + orderOK(completeFn, 'shadowTreeRegistry_.visit', 'shadowTree.commit(') +
+      ' stateOrder:' + orderOK(updateStateFn, 'shadowTreeRegistry_.visit', 'shadowTree.commit(') +
+      ' usOrder:' + orderOK(uUS, 'getShadowTreeRegistry().enumerate', 'shadowTree.commit('),
+    countOf(uC, 'shadowTree.commit(') === 3 &&
+      countOf(uUS, 'shadowTree.commit(') === 1 &&
+      countOf(regC, 'std::shared_lock lock(mutex_);') === 2 &&
+      countOf(regC, 'std::unique_lock lock(mutex_);') === 2 &&
+      orderOK(completeFn, 'shadowTreeRegistry_.visit', 'shadowTree.commit(') &&
+      orderOK(updateStateFn, 'shadowTreeRegistry_.visit', 'shadowTree.commit(') &&
+      orderOK(uUS, 'getShadowTreeRegistry().enumerate', 'shadowTree.commit('));
+
+  // ── UIM-9 ──
+  const reportFn = slice(uC, 'UIManager::reportMount', 1200);
+  add('C739', 'UIM-9：reportMount 用 baseRevision 的已挂载树；无 base 时发 didUnmount；time 在 visit 前取',
+    'baseRevision / didMount / didUnmount / now 在 visit 前',
+    'base:' + reportFn.includes('getBaseRevision().rootShadowNode') +
+      ' mount:' + reportFn.includes('mountHook->shadowTreeDidMount(rootShadowNode, time);') +
+      ' unmount:' + reportFn.includes('mountHook->shadowTreeDidUnmount(surfaceId, time);') +
+      ' time:' + orderOK(reportFn, 'HighResTimeStamp::now()', 'shadowTreeRegistry_.visit'),
+    reportFn.includes('getBaseRevision().rootShadowNode') &&
+      reportFn.includes('mountHook->shadowTreeDidMount(rootShadowNode, time);') &&
+      reportFn.includes('mountHook->shadowTreeDidUnmount(surfaceId, time);') &&
+      orderOK(reportFn, 'HighResTimeStamp::now()', 'shadowTreeRegistry_.visit'));
+
+  // ── UIM-10 ──
+  const regHook = slice(uC, 'UIManager::registerCommitHook', 600);
+  const unregHook = slice(uC, 'UIManager::unregisterCommitHook', 400);
+  add('C740', 'UIM-10：commit hook 注册/注销回调都在 unique_lock 内，register 先回调后入表、unregister 先出表后回调',
+    'register: unique_lock + callback < push_back / unregister: unique_lock + erase < callback',
+    'regLock:' + regHook.includes('std::unique_lock lock(commitHookMutex_);') +
+      ' regOrder:' + orderOK(regHook, 'commitHookWasRegistered', 'commitHooks_.push_back') +
+      ' unregLock:' + unregHook.includes('std::unique_lock lock(commitHookMutex_);') +
+      ' unregOrder:' + orderOK(unregHook, 'commitHooks_.erase', 'commitHookWasUnregistered'),
+    regHook.includes('std::unique_lock lock(commitHookMutex_);') &&
+      orderOK(regHook, 'commitHookWasRegistered', 'commitHooks_.push_back') &&
+      unregHook.includes('std::unique_lock lock(commitHookMutex_);') &&
+      orderOK(unregHook, 'commitHooks_.erase', 'commitHookWasUnregistered'));
+
+  // ── UIM-11 ──
+  const willFn = slice(uC, 'UIManager::shadowTreeWillCommit', 900);
+  const didFn = slice(uC, 'UIManager::shadowTreeDidCommit', 700);
+  add('C741', 'UIM-11：willCommit 在 shared_lock 下按注册顺序链式传递结果；didCommit 同锁遍历',
+    'shared_lock / result 初始化 / 链式赋值 / didCommit shared_lock',
+    'willLock:' + willFn.includes('std::shared_lock lock(commitHookMutex_);') +
+      ' init:' + willFn.includes('auto resultRootShadowNode = newRootShadowNode;') +
+      ' chain:' + willFn.includes('resultRootShadowNode = commitHook->shadowTreeWillCommit(') +
+      ' didLock:' + didFn.includes('std::shared_lock lock(commitHookMutex_);'),
+    willFn.includes('std::shared_lock lock(commitHookMutex_);') &&
+      willFn.includes('auto resultRootShadowNode = newRootShadowNode;') &&
+      willFn.includes('resultRootShadowNode = commitHook->shadowTreeWillCommit(') &&
+      didFn.includes('std::shared_lock lock(commitHookMutex_);'));
+
+  // ── UIM-12 ──
+  add('C742', 'UIM-12：CommitHook 仅 2 纯虚 + 新重载默认转发旧重载 + 旧默认返回新树 + didCommit 空体；MountHook 仅 didMount 纯虚',
+    'ch pure=2 / forward / return newRoot / no longer pure / mount pure=1 / backwards compatibility',
+    'chPure:' + countOf(chH, '= 0;') +
+      ' forward:' + chH.includes('return shadowTreeWillCommit(shadowTree, oldRootShadowNode, newRootShadowNode);') +
+      ' ret:' + chH.includes('return newRootShadowNode;') +
+      ' comment:' + chH.includes('No longer a pure method') +
+      ' mhPure:' + countOf(mhH, '= 0;') +
+      ' compat:' + mhH.includes('Default no-op implementation for backwards compatibility.'),
+    countOf(chH, '= 0;') === 2 &&
+      chH.includes('return shadowTreeWillCommit(shadowTree, oldRootShadowNode, newRootShadowNode);') &&
+      chH.includes('return newRootShadowNode;') &&
+      chH.includes('No longer a pure method') &&
+      countOf(mhH, '= 0;') === 1 &&
+      mhH.includes('Default no-op implementation for backwards compatibility.'));
+
+  // ── UIM-13 ──
+  const findByTag = slice(uC, 'UIManager::findShadowNodeByTag_DEPRECATED', 1500);
+  add('C743', 'UIM-13：findShadowNodeByTag 每个 surface 只从 children.front() 进递归，根的其他孩子（伪元素）查不到',
+    'children.front / 递归 / stop / 伪元素是根的额外孩子',
+    'front:' + findByTag.includes('const auto& child = children.front();') +
+      ' recurse:' + findByTag.includes('findShadowNodeByTagRecursively(child, tag)') +
+      ' stop:' + findByTag.includes('stop = true;') +
+      ' pseudo:' + vtH.includes('Pseudo-element nodes are appended as additional children of the'),
+    findByTag.includes('const auto& child = children.front();') &&
+      findByTag.includes('findShadowNodeByTagRecursively(child, tag)') &&
+      findByTag.includes('stop = true;') &&
+      vtH.includes('Pseudo-element nodes are appended as additional children of the'));
+
+  // ── UIM-14 ──
+  const subtreeFn = slice(uC, 'UIManager::getShadowNodeInSubtree', 900);
+  add('C744', 'UIM-14：getShadowNodeInSubtree 同 family 直接返回参数根；否则 recent ancestor + children.at；空祖先返回 nullptr',
+    'sameFamily 短路 / rbegin / at / 空返回',
+    'same:' + subtreeFn.includes('ShadowNode::sameFamily(*ancestorShadowNode, shadowNode)') +
+      ' rbegin:' + subtreeFn.includes('auto pair = ancestors.rbegin();') +
+      ' at:' + subtreeFn.includes('.getChildren().at(pair->second)') +
+      ' null:' + subtreeFn.includes('if (!ancestorShadowNode) {'),
+    subtreeFn.includes('ShadowNode::sameFamily(*ancestorShadowNode, shadowNode)') &&
+      subtreeFn.includes('auto pair = ancestors.rbegin();') &&
+      subtreeFn.includes('.getChildren().at(pair->second)') &&
+      subtreeFn.includes('if (!ancestorShadowNode) {'));
+
+  // ── UIM-15 ──
+  const relFn = slice(uC, 'UIManager::getRelativeLayoutMetrics', 1700);
+  add('C745', 'UIM-15：祖先空→当前 revision 根；祖先有值→newest clone；空或非 Layoutable→EmptyLayoutMetrics；binding 固定 includeTransform=false',
+    'visit 当前根 / newest clone / dynamic_cast / Empty / includeTransform=false',
+    'visit:' + relFn.includes('owningAncestorShadowNode =') +
+      ' newest:' + relFn.includes('getNewestCloneOfShadowNode(*ancestorShadowNode)') +
+      ' cast:' + relFn.includes('dynamic_cast<const LayoutableShadowNode*>(ancestorShadowNode)') +
+      ' empty:' + relFn.includes('return EmptyLayoutMetrics;') +
+      ' policy:' + bC.includes('.includeTransform = false'),
+    relFn.includes('getNewestCloneOfShadowNode(*ancestorShadowNode)') &&
+      relFn.includes('dynamic_cast<const LayoutableShadowNode*>(ancestorShadowNode)') &&
+      relFn.includes('return EmptyLayoutMetrics;') &&
+      bC.includes('.includeTransform = false'));
+
+  // ── UIM-16 ──
+  add('C746', 'UIM-16：updateState 任一实例 cloneTree 返回空→isValid=false→事务返回 nullptr→整次提交取消',
+    'isValid=false / 占位 clone / createState / isValid ? : nullptr',
+    'inval:' + updateStateFn.includes('isValid = false;') +
+      ' placeholder:' + updateStateFn.includes('return oldShadowNode.clone({});') +
+      ' state:' + updateStateFn.includes('componentDescriptor.createState(*family, newData);') +
+      ' discard:' + updateStateFn.includes('return isValid'),
+    updateStateFn.includes('isValid = false;') &&
+      updateStateFn.includes('return oldShadowNode.clone({});') &&
+      updateStateFn.includes('componentDescriptor.createState(*family, newData);') &&
+      updateStateFn.includes('return isValid'));
+
+  // ── UIM-17 ──
+  const tickFn = slice(uC, 'UIManager::animationTick', 900);
+  add('C747', 'UIM-17：animationDelegate 驱动 notifyDelegatesOfUpdates；nativeAnimatedDelegate 仅在 !useSharedAnimatedBackend 时跑，两后端互斥',
+    'shouldAnimateFrame / notifyDelegatesOfUpdates / !shared / runAnimationFrame 顺序',
+    'should:' + tickFn.includes('animationDelegate_->shouldAnimateFrame()') +
+      ' notify:' + tickFn.includes('shadowTree.notifyDelegatesOfUpdates();') +
+      ' flag:' + tickFn.includes('!ReactNativeFeatureFlags::useSharedAnimatedBackend()') +
+      ' run:' + tickFn.includes('nativeAnimatedDelegate->runAnimationFrame();'),
+    tickFn.includes('animationDelegate_->shouldAnimateFrame()') &&
+      tickFn.includes('shadowTree.notifyDelegatesOfUpdates();') &&
+      tickFn.includes('!ReactNativeFeatureFlags::useSharedAnimatedBackend()') &&
+      tickFn.includes('nativeAnimatedDelegate->runAnimationFrame();'));
+
+  // ── UIM-18 ──
+  const vtSetFn = slice(uC, 'UIManager::setViewTransitionDelegate', 400);
+  add('C748', 'UIM-18：setViewTransitionDelegate 仅在 flag 开启时保存、关闭不清空；接口 12 个虚方法全有默认体、0 纯虚',
+    'flag gate / 保存 / 0 个 =0 / 13 个 virtual / startViewTransitionEnd 空体 / nullopt / nullptr',
+    'gate:' + vtSetFn.includes('ReactNativeFeatureFlags::viewTransitionEnabled()') +
+      ' assign:' + vtSetFn.includes('viewTransitionDelegate_ = delegate;') +
+      ' pure:' + countOf(vtH, '= 0;') +
+      ' virtuals:' + countOf(vtH, 'virtual ') +
+      ' end:' + vtH.includes('startViewTransitionEnd() {}') +
+      ' opt:' + vtH.includes('return std::nullopt;') +
+      ' null:' + vtH.includes('return nullptr;'),
+    vtSetFn.includes('ReactNativeFeatureFlags::viewTransitionEnabled()') &&
+      vtSetFn.includes('viewTransitionDelegate_ = delegate;') &&
+      countOf(vtH, '= 0;') === 0 &&
+      countOf(vtH, 'virtual ') >= 12 &&
+      vtH.includes('startViewTransitionEnd() {}') &&
+      vtH.includes('return std::nullopt;') &&
+      vtH.includes('return nullptr;'));
+
+  // ── UIM-19 ──
+  add('C749', 'UIM-19：updateShadowTree 逐 surface BFS 收集 tag+祖先，按 depth 降序克隆、替换孩子后提交根',
+    'deque / addAncestors / depth 排序 / clonedShadowNodes / commit',
+    'deque:' + uUS.includes('std::deque<std::shared_ptr<const ShadowNode>> deque{rootShadowNode};') +
+      ' ancestors:' + uUS.includes('addAncestorsToUpdateList(') +
+      ' sort:' + uUS.includes('return a.depth > b.depth;') +
+      ' cloneMap:' + uUS.includes('clonedShadowNodes.insert(') +
+      ' commit:' + uUS.includes('shadowTree.commit('),
+    uUS.includes('std::deque<std::shared_ptr<const ShadowNode>> deque{rootShadowNode};') &&
+      uUS.includes('addAncestorsToUpdateList(') &&
+      uUS.includes('return a.depth > b.depth;') &&
+      uUS.includes('clonedShadowNodes.insert(') &&
+      uUS.includes('shadowTree.commit('));
+
+  // ── UIM-20 ──
+  add('C750', 'UIM-20：updateShadowTree 用 DO_NOT_USE_THIS_IS_BROKEN 查 descriptor；日志拼写 exits；忽略 commit 状态；delegate 收到完整 map',
+    'broken 名 / exits / no CommitStatus / delegate 在 enumerate 前',
+    'broken:' + uUS.includes('findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN') +
+      ' typo:' + uUS.includes('"Child no longer exits"') +
+      ' noStatus:' + !uUS.includes('CommitStatus') +
+      ' delegateFirst:' + orderOK(uUS, 'uiManagerDidUpdateShadowTree', 'getShadowTreeRegistry().enumerate'),
+    uUS.includes('findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN') &&
+      uUS.includes('"Child no longer exits"') &&
+      !uUS.includes('CommitStatus') &&
+      orderOK(uUS, 'uiManagerDidUpdateShadowTree', 'getShadowTreeRegistry().enumerate'));
+
+  // ── UIM-21 ──
+  add('C751', 'UIM-21：updateShadowTree 事务忽略旧根参数、返回预构建根；ShadowTree::commit 只比较 revision 号，并发提交可被覆盖；source=Unknown 且不更新 consistency',
+    '根在 BFS 前取 / 丢参数 / 返回预构建 / 只比较 number / 无 sameFamily 派生检查 / Unknown / 无 updateCurrentRevision',
+    'capture:' + uUS.includes('auto rootShadowNode = shadowTree.getCurrentRevision().rootShadowNode;') +
+      ' ignored:' + uUS.includes('](const RootShadowNode&) -> RootShadowNode::Unshared {') +
+      ' prebuilt:' + uUS.includes('return std::static_pointer_cast<RootShadowNode>(rootNode);') +
+      ' numberOnly:' + treeCpp.includes('if (!isReactBranch && currentRevision_.number != oldRevision.number) {') +
+      ' noLineage:' + !treeCpp.includes('sameFamily(newRootShadowNode') +
+      ' unknown:' + treeH.includes('ShadowTreeCommitSource source{ShadowTreeCommitSource::Unknown};') +
+      ' noConsistency:' + !uUS.includes('updateCurrentRevision'),
+    uUS.includes('auto rootShadowNode = shadowTree.getCurrentRevision().rootShadowNode;') &&
+      uUS.includes('](const RootShadowNode&) -> RootShadowNode::Unshared {') &&
+      uUS.includes('return std::static_pointer_cast<RootShadowNode>(rootNode);') &&
+      treeCpp.includes('if (!isReactBranch && currentRevision_.number != oldRevision.number) {') &&
+      !treeCpp.includes('sameFamily(newRootShadowNode') &&
+      treeH.includes('ShadowTreeCommitSource source{ShadowTreeCommitSource::Unknown};') &&
+      !uUS.includes('updateCurrentRevision'));
+
+  // ── UIM-22 ──
+  const getBindingFn = slice(bC, 'UIManagerBinding::getBinding', 600);
+  add('C752', 'UIM-22：binding 仅在 nativeFabricUIManager 为 undefined 时安装；安装线程设置 thread_local runtime 引用开关；getBinding 无 binding 返回 nullptr',
+    '全局名 2 次 / undefined 才装 / thread_local 开关 / getBinding nullptr / 默认 false',
+    'name:' + countOf(bC, 'auto uiManagerModuleName = "nativeFabricUIManager";') +
+      ' undefined:' + bC.includes('if (uiManagerValue.isUndefined()) {') +
+      ' thread:' + bC.includes('setUseRuntimeShadowNodeReferenceUpdateOnThread(true);') +
+      ' null:' + getBindingFn.includes('return nullptr;') +
+      ' default:' + shNodeC.includes('thread_local bool useRuntimeShadowNodeReferenceUpdateOnThread{false};'),
+    countOf(bC, 'auto uiManagerModuleName = "nativeFabricUIManager";') === 2 &&
+      bC.includes('if (uiManagerValue.isUndefined()) {') &&
+      bC.includes('setUseRuntimeShadowNodeReferenceUpdateOnThread(true);') &&
+      getBindingFn.includes('return nullptr;') &&
+      shNodeC.includes('thread_local bool useRuntimeShadowNodeReferenceUpdateOnThread{false};'));
+
+  // ── UIM-23 ──
+  const regHandler = slice(bC, 'methodName == "registerEventHandler"', 900);
+  add('C753', 'UIM-23：35 个方法名；未知成员返回 undefined；eventHandler_ 单槽覆盖注册、无注销、注册前事件被 if 静默丢弃',
+    'methodName=35 / 末尾 undefined / eventHandler_ 赋值 / 无 unregister / if(eventHandler_)',
+    'methods:' + countOf(bC, 'methodName == "') +
+      ' fallthrough:' + bC.includes('\n  return jsi::Value::undefined();\n}') +
+      ' assign:' + regHandler.includes('eventHandler_ =') +
+      ' member:' + bH.includes('std::unique_ptr<jsi::Function> eventHandler_;') +
+      ' noUnregister:' + !bC.includes('"unregisterEventHandler"') +
+      ' guard:' + bC.includes('if (eventHandler_) {'),
+    countOf(bC, 'methodName == "') === 35 &&
+      bC.includes('\n  return jsi::Value::undefined();\n}') &&
+      regHandler.includes('eventHandler_ =') &&
+      bH.includes('std::unique_ptr<jsi::Function> eventHandler_;') &&
+      !bC.includes('"unregisterEventHandler"') &&
+      bC.includes('if (eventHandler_) {'));
+
+  // ── UIM-24 ──
+  add('C754', 'UIM-24：validateArgumentCount 只查下界；两个 clone 方法校验被注释；无类型检查',
+    'actual<expected / 注释 2 处 / TODO 2 处 / 无上界检查',
+    'lower:' + bC.includes('if (actual < expected) {') +
+      ' commented:' + countOf(bC, '// validateArgumentCount(runtime, methodName, paramCount, count);') +
+      ' todo:' + countOf(bC, 'TODO: re-enable when passChildrenWhenCloningPersistedNodes is') +
+      ' noUpper:' + !bC.includes('actual > expected'),
+    bC.includes('if (actual < expected) {') &&
+      countOf(bC, '// validateArgumentCount(runtime, methodName, paramCount, count);') === 2 &&
+      countOf(bC, 'TODO: re-enable when passChildrenWhenCloningPersistedNodes is') === 2 &&
+      !bC.includes('actual > expected'));
+
+  // ── UIM-25 ──
+  const dispatchFn = slice(bC, 'UIManagerBinding::dispatchEvent', 1800);
+  add('C755', 'UIM-25：pointer 事件从 instanceHandle.stateNode.node 反查 shadow node 后进 PointerEventsProcessor；空 target 静默丢弃；非 pointer 直通',
+    'PointerEvent 分支 / 反查 / intercept / else dispatchEventToJS / stateNode / node',
+    'branch:' + dispatchFn.includes('eventPayload.getType() == EventPayloadType::PointerEvent') +
+      ' lookup:' + dispatchFn.includes('PointerEventsProcessor::getShadowNodeFromEventTarget(') +
+      ' intercept:' + dispatchFn.includes('pointerEventsProcessor_.interceptPointerEvent(') +
+      ' else:' + dispatchFn.includes('dispatchEventToJS(') +
+      ' stateNode:' + peC.includes('"stateNode"') +
+      ' node:' + peC.includes('"node"'),
+    dispatchFn.includes('eventPayload.getType() == EventPayloadType::PointerEvent') &&
+      dispatchFn.includes('PointerEventsProcessor::getShadowNodeFromEventTarget(') &&
+      dispatchFn.includes('pointerEventsProcessor_.interceptPointerEvent(') &&
+      dispatchFn.includes('dispatchEventToJS(') &&
+      peC.includes('"stateNode"') && peC.includes('"node"'));
+
+  // ── UIM-26 ──
+  const toJsFn = slice(bC, 'UIManagerBinding::dispatchEventToJS', 1900);
+  const dropIdx = toJsFn.indexOf('LOG_EVERY_N(INFO, 10)');
+  const callIdx = toJsFn.indexOf('eventHandler_->call(', dropIdx);
+  const between = dropIdx >= 0 && callIdx > dropIdx ? toJsFn.slice(dropIdx, callIdx) : '';
+  add('C756', 'UIM-26：instanceHandle 空时注释说 dropped 但没有 return；currentEventPriority_ 无初值、异常跳过复位、嵌套不恢复',
+    'LOG_EVERY_N / 中间无 return / 赋值-调用-复位顺序 / 成员无初值 / enum class',
+    'log:' + toJsFn.includes('LOG_EVERY_N(INFO, 10)') +
+      ' noReturn:' + (between.length > 0 && !between.includes('return')) +
+      ' order:' + orderOK(toJsFn, 'currentEventPriority_ = priority;', 'eventHandler_->call(') +
+      ' reset:' + orderOK(toJsFn, 'eventHandler_->call(', 'currentEventPriority_ = ReactEventPriority::Default;') +
+      ' uninit:' + bH.includes('mutable ReactEventPriority currentEventPriority_;') +
+      ' noBrace:' + !bH.includes('currentEventPriority_{') +
+      ' enum:' + reacH.includes('enum class ReactEventPriority {'),
+    toJsFn.includes('LOG_EVERY_N(INFO, 10)') &&
+      between.length > 0 && !between.includes('return') &&
+      orderOK(toJsFn, 'currentEventPriority_ = priority;', 'eventHandler_->call(') &&
+      orderOK(toJsFn, 'eventHandler_->call(', 'currentEventPriority_ = ReactEventPriority::Default;') &&
+      bH.includes('mutable ReactEventPriority currentEventPriority_;') &&
+      !bH.includes('currentEventPriority_{') &&
+      reacH.includes('enum class ReactEventPriority {'));
+
+  // ── UIM-27 ──
+  const findPoint = slice(bC, 'methodName == "findNodeAtPoint"', 1600);
+  add('C757', 'UIM-27：findNodeAtPoint 手写 DispatchMutex lock/unlock（std::mutex），无 RAII，直接读公有 eventTarget_',
+    'lock < retain < getInstanceHandle < release < unlock / 无 lock_guard / std::mutex / eventTarget_',
+    'order1:' + orderOK(findPoint, 'EventEmitter::DispatchMutex().lock();', 'eventTarget->retain(runtime);') +
+      ' order2:' + orderOK(findPoint, 'eventTarget->retain(runtime);', 'getInstanceHandle(runtime)') +
+      ' order3:' + orderOK(findPoint, 'getInstanceHandle(runtime)', 'eventTarget->release(runtime);') +
+      ' order4:' + orderOK(findPoint, 'eventTarget->release(runtime);', 'EventEmitter::DispatchMutex().unlock();') +
+      ' noRaii:' + (!findPoint.includes('lock_guard') && !findPoint.includes('unique_lock')) +
+      ' raw:' + findPoint.includes('eventTarget_;') +
+      ' mutex:' + emitterH.includes('static std::mutex &DispatchMutex();'),
+    orderOK(findPoint, 'EventEmitter::DispatchMutex().lock();', 'eventTarget->retain(runtime);') &&
+      orderOK(findPoint, 'eventTarget->retain(runtime);', 'getInstanceHandle(runtime)') &&
+      orderOK(findPoint, 'getInstanceHandle(runtime)', 'eventTarget->release(runtime);') &&
+      orderOK(findPoint, 'eventTarget->release(runtime);', 'EventEmitter::DispatchMutex().unlock();') &&
+      !findPoint.includes('lock_guard') && !findPoint.includes('unique_lock') &&
+      findPoint.includes('eventTarget_;') &&
+      emitterH.includes('static std::mutex &DispatchMutex();'));
+
+  // ── UIM-28 ──
+  const invalidateFn = slice(bC, 'UIManagerBinding::invalidate', 300);
+  add('C758', 'UIM-28：invalidate 只清 UIManager delegate，不清 handler/pointer 状态、不释放 uiManager_；调用后 UB 只写在注释里',
+    'setDelegate(nullptr) / 无 eventHandler_ / 无 pointerEventsProcessor_ / 持有 uiManager_ / UB 注释',
+    'delegate:' + invalidateFn.includes('uiManager_->setDelegate(nullptr);') +
+      ' noHandler:' + !invalidateFn.includes('eventHandler_') +
+      ' noPointer:' + !invalidateFn.includes('pointerEventsProcessor_') +
+      ' retains:' + bH.includes('std::shared_ptr<UIManager> uiManager_;') +
+      ' ub:' + bH.includes('Calling public methods of this class after calling this method is UB.'),
+    invalidateFn.includes('uiManager_->setDelegate(nullptr);') &&
+      !invalidateFn.includes('eventHandler_') &&
+      !invalidateFn.includes('pointerEventsProcessor_') &&
+      bH.includes('std::shared_ptr<UIManager> uiManager_;') &&
+      bH.includes('Calling public methods of this class after calling this method is UB.'));
+
+  // ── UIM-29 ──
+  add('C759', 'UIM-29：六个几何查询走 consistency provider + dom::*；空 revision 分别 onFail/六零/四零/undefined/0/零对象',
+    'getCurrentRevision=6 / dom 5 种 / onFail / 六零 / 四零 / undefined / 0 / 零对象',
+    'revisions:' + countOf(bC, 'getShadowTreeRevisionProvider()->getCurrentRevision(') +
+      ' measureLayout:' + bC.includes('dom::measureLayout(') +
+      ' measure:' + bC.includes('dom::measure(') +
+      ' inWindow:' + bC.includes('dom::measureInWindow(') +
+      ' domRect:' + bC.includes('dom::getBoundingClientRect(') +
+      ' compare:' + bC.includes('dom::compareDocumentPosition(') +
+      ' six:' + countOf(bC, 'callbackFunction.call(runtime, {0, 0, 0, 0, 0, 0});') +
+      ' four:' + countOf(bC, 'callbackFunction.call(runtime, {0, 0, 0, 0});'),
+    countOf(bC, 'getShadowTreeRevisionProvider()->getCurrentRevision(') === 6 &&
+      bC.includes('dom::measureLayout(') && bC.includes('dom::measure(') &&
+      bC.includes('dom::measureInWindow(') && bC.includes('dom::getBoundingClientRect(') &&
+      bC.includes('dom::compareDocumentPosition(') &&
+      countOf(bC, 'callbackFunction.call(runtime, {0, 0, 0, 0, 0, 0});') === 1 &&
+      countOf(bC, 'callbackFunction.call(runtime, {0, 0, 0, 0});') === 1);
+
+  // ── UIM-30 ──
+  const vtFn = slice(bC, 'methodName == "startViewTransition"', 5000);
+  add('C760', 'UIM-30：startViewTransition 手搓 ready/finished Promise，mutation/onReady 必须同步，onComplete 经 runtimeExecutor，delegate 裸指针按值捕获',
+    'Promise / readyResolve / finishedResolve / runtimeExecutor_ / startViewTransitionEnd / 同步注释',
+    'promise:' + vtFn.includes('auto promiseConstructor =') +
+      ' ready:' + vtFn.includes('readyResolveFunc') +
+      ' finished:' + vtFn.includes('finishedResolveFunc') +
+      ' executor:' + vtFn.includes('runtimeExecutor = uiManager->runtimeExecutor_') +
+      ' start:' + vtFn.includes('viewTransitionDelegate->startViewTransition(') +
+      ' end:' + vtFn.includes('viewTransitionDelegate->startViewTransitionEnd();') +
+      ' sync:' + vtFn.includes('called synchronously'),
+    vtFn.includes('auto promiseConstructor =') &&
+      vtFn.includes('readyResolveFunc') &&
+      vtFn.includes('finishedResolveFunc') &&
+      vtFn.includes('runtimeExecutor = uiManager->runtimeExecutor_') &&
+      vtFn.includes('viewTransitionDelegate->startViewTransition(') &&
+      vtFn.includes('viewTransitionDelegate->startViewTransitionEnd();') &&
+      vtFn.includes('called synchronously'));
+
+  // ── UIM-31 ──
+  const shouldEmit = slice(peC, 'static bool shouldEmitPointerEvent', 2800);
+  const processCap = slice(peC, 'PointerEventsProcessor::processPendingPointerCapture', 1700);
+  add('C761', 'UIM-31：capture 静默失败、release/has 只查 pending、weak_ptr 懒清理；lost/got 用 Discrete 且门禁恒真',
+    'buttons==0 / silent / pending only / expired erase / Discrete / shouldEmit 不含 lost/got / return true',
+    'buttons:' + peC.includes('if (activePointer->event.buttons == 0) {') +
+      ' pending:' + peC.includes('pendingPointerCaptureTargetOverrides_[pointerId] = shadowNode;') +
+      ' tag:' + peC.includes('pendingTarget->getTag() == shadowNode->getTag()') +
+      ' expired:' + peC.includes('maybeTarget.expired()') +
+      ' discrete:' + countOf(processCap, 'ReactEventPriority::Discrete') +
+      ' notInGate:' + (!shouldEmit.includes('"topLostPointerCapture"') && !shouldEmit.includes('"topGotPointerCapture"')) +
+      ' true:' + countOf(shouldEmit, 'return true;'),
+    peC.includes('if (activePointer->event.buttons == 0) {') &&
+      peC.includes('pendingPointerCaptureTargetOverrides_[pointerId] = shadowNode;') &&
+      peC.includes('pendingTarget->getTag() == shadowNode->getTag()') &&
+      peC.includes('maybeTarget.expired()') &&
+      countOf(processCap, 'ReactEventPriority::Discrete') === 2 &&
+      !shouldEmit.includes('"topLostPointerCapture"') && !shouldEmit.includes('"topGotPointerCapture"') &&
+      countOf(shouldEmit, 'return true;') === 1);
+
+  // ── UIM-32 ──
+  const interceptFn = slice(peC, 'PointerEventsProcessor::interceptPointerEvent', 3600);
+  add('C762', 'UIM-32：pointer 流程固定为 processPending→retarget→topClick 直通→down/move→leave/其他→cancel/up 再 leave→隐式 release→注销',
+    '11 个顺序点全部递增',
+    'p1:' + orderOK(interceptFn, 'processPendingPointerCapture(event, eventDispatcher, uiManager);', 'getCaptureTargetOverride(') +
+      ' p2:' + orderOK(interceptFn, 'getCaptureTargetOverride(', 'if (type == "topClick")') +
+      ' p3:' + orderOK(interceptFn, 'if (type == "topClick")', 'registerActivePointer(pointerEvent);') +
+      ' p4:' + orderOK(interceptFn, 'registerActivePointer(pointerEvent);', 'updateActivePointer(pointerEvent);') +
+      ' p5:' + orderOK(interceptFn, 'updateActivePointer(pointerEvent);', 'if (type == "topPointerLeave")') +
+      ' p6:' + orderOK(interceptFn, 'if (type == "topPointerLeave")', 'handleIncomingPointerEventOnNode(') +
+      ' p7:' + orderOK(interceptFn, 'handleIncomingPointerEventOnNode(', 'shouldEmitPointerEvent(*targetNode, type, uiManager)') +
+      ' p8:' + orderOK(interceptFn, 'shouldEmitPointerEvent(*targetNode, type, uiManager)', 'if (type == "topPointerCancel" ||') +
+      ' p9:' + orderOK(interceptFn, 'if (type == "topPointerCancel" ||', 'releasePointerCapture(pointerEvent.pointerId, overrideTarget.get());') +
+      ' p10:' + orderOK(interceptFn, 'releasePointerCapture(pointerEvent.pointerId, overrideTarget.get());', 'unregisterActivePointer(pointerEvent);'),
+    orderOK(interceptFn, 'processPendingPointerCapture(event, eventDispatcher, uiManager);', 'getCaptureTargetOverride(') &&
+      orderOK(interceptFn, 'getCaptureTargetOverride(', 'if (type == "topClick")') &&
+      orderOK(interceptFn, 'if (type == "topClick")', 'registerActivePointer(pointerEvent);') &&
+      orderOK(interceptFn, 'registerActivePointer(pointerEvent);', 'updateActivePointer(pointerEvent);') &&
+      orderOK(interceptFn, 'updateActivePointer(pointerEvent);', 'if (type == "topPointerLeave")') &&
+      orderOK(interceptFn, 'if (type == "topPointerLeave")', 'handleIncomingPointerEventOnNode(') &&
+      orderOK(interceptFn, 'handleIncomingPointerEventOnNode(', 'shouldEmitPointerEvent(*targetNode, type, uiManager)') &&
+      orderOK(interceptFn, 'shouldEmitPointerEvent(*targetNode, type, uiManager)', 'if (type == "topPointerCancel" ||') &&
+      orderOK(interceptFn, 'if (type == "topPointerCancel" ||', 'releasePointerCapture(pointerEvent.pointerId, overrideTarget.get());') &&
+      orderOK(interceptFn, 'releasePointerCapture(pointerEvent.pointerId, overrideTarget.get());', 'unregisterActivePointer(pointerEvent);'));
+
+  // ── UIM-33 ──
+  const latestFn = slice(phC, 'PointerHoverTracker::getLatestNode', 500);
+  add('C763', 'UIM-33：retarget 无判空解引用 newest clone；四个 caller 解引用点都不判空；hover getLatestNode 返回局部 shared_ptr 的 .get()',
+    'TODO / *latestNodeToTarget / result.target / *retargeted.target x4 / 临时 shared_ptr .get / 空返回路径',
+    'todo:' + peC.includes('TODO: is dereferencing latestNodeToTarget without null checking safe?') +
+      ' deref:' + peC.includes('*latestNodeToTarget,') +
+      ' result:' + peC.includes('result.target = latestNodeToTarget;') +
+      ' retargeted:' + countOf(peC, '*retargeted.target') +
+      ' get:' + latestFn.includes('auto newestTarget = uiManager.getNewestCloneOfShadowNode(node);') +
+      ' ret:' + latestFn.includes('return newestTarget.get();') +
+      ' canNull:' + uC.includes('if (!ancestorShadowNode) {'),
+    peC.includes('TODO: is dereferencing latestNodeToTarget without null checking safe?') &&
+      peC.includes('*latestNodeToTarget,') &&
+      peC.includes('result.target = latestNodeToTarget;') &&
+      countOf(peC, '*retargeted.target') >= 4 &&
+      latestFn.includes('auto newestTarget = uiManager.getNewestCloneOfShadowNode(node);') &&
+      latestFn.includes('return newestTarget.get();') &&
+      uC.includes('if (!ancestorShadowNode) {'));
+
+  // ── UIM-34 ──
+  add('C764', 'UIM-34：hover 从根按 sameFamily 找分叉、假设不 reparent；leave 反向发、enter 正序发、capture 沿路径继承；空 target 清 tracker',
+    'rbegin / sameFamily / 不 reparent 注释 / leave 反向 / enter 正序 / 两个 capture 标志 / erase',
+    'rbegin:' + phC.includes('auto myIt = myEventPath.rbegin();') +
+      ' same:' + phC.includes('ShadowNode::sameFamily(myIt->get(), otherIt->get())') +
+      ' assumption:' + phC.includes("nodes in react-native don't") +
+      ' leave:' + peC.includes('targetsToEmitLeaveTo.rbegin()') +
+      ' leaveCap:' + peC.includes('hasParentLeaveCaptureListener') +
+      ' enterCap:' + peC.includes('hasParentEnterCaptureListener') +
+      ' erase:' + peC.includes('previousHoverTrackersPerPointer_.erase(event.pointerId);'),
+    phC.includes('auto myIt = myEventPath.rbegin();') &&
+      phC.includes('ShadowNode::sameFamily(myIt->get(), otherIt->get())') &&
+      phC.includes("nodes in react-native don't") &&
+      peC.includes('targetsToEmitLeaveTo.rbegin()') &&
+      peC.includes('hasParentLeaveCaptureListener') &&
+      peC.includes('hasParentEnterCaptureListener') &&
+      peC.includes('previousHoverTrackersPerPointer_.erase(event.pointerId);'));
+
+  // ── UIM-35 ──
+  add('C765', 'UIM-35：LayoutEventEmitter 只处理 ViewProps 且 onLayout 非空的节点，调 BaseViewEventEmitter::onLayout；逻辑原在 ShadowTree',
+    'affected 循环 / dynamic_cast ViewProps / onLayout / BaseViewEventEmitter / 原来在 ShadowTree',
+    'loop:' + layC.includes('for (const auto* layoutableNode : affectedLayoutableNodes)') +
+      ' cast:' + layC.includes('dynamic_cast<const ViewProps*>(layoutableNode->getProps().get())') +
+      ' gate:' + layC.includes('if (viewProps->onLayout)') +
+      ' emit:' + layC.includes('BaseViewEventEmitter&') +
+      ' metrics:' + layC.includes('.onLayout(layoutableNode->getLayoutMetrics());') +
+      ' moved:' + layH.includes('this logic used to be implemented directly in'),
+    layC.includes('for (const auto* layoutableNode : affectedLayoutableNodes)') &&
+      layC.includes('dynamic_cast<const ViewProps*>(layoutableNode->getProps().get())') &&
+      layC.includes('if (viewProps->onLayout)') &&
+      layC.includes('BaseViewEventEmitter&') &&
+      layC.includes('.onLayout(layoutableNode->getLayoutMetrics());') &&
+      layH.includes('this logic used to be implemented directly in'));
+
+  // ── UIM-36 ──
+  add('C766', 'UIM-36：AppRegistryBinding 调 RN$AppRegistry.runApplication/setSurfaceProps 与 RN$stopSurface；fabric 写死 true；缺全局抛 runtime_error；Trace 名误标',
+    'RN$AppRegistry / runApplication / setSurfaceProps / RN$stopSurface / runtime_error / fabric true / 误标',
+    'registry:' + appC.includes('"RN$AppRegistry"') +
+      ' run:' + appC.includes('"runApplication"') +
+      ' props:' + appC.includes('"setSurfaceProps"') +
+      ' stop:' + appC.includes('"RN$stopSurface"') +
+      ' throw:' + appC.includes('throw std::runtime_error(') +
+      ' fabric:' + appC.includes('parameters.setProperty(runtime, "fabric", true);') +
+      ' trace:' + appC.includes('TraceSection s("UIManagerBinding::setSurfaceProps");'),
+    appC.includes('"RN$AppRegistry"') && appC.includes('"runApplication"') &&
+      appC.includes('"setSurfaceProps"') && appC.includes('"RN$stopSurface"') &&
+      appC.includes('throw std::runtime_error(') &&
+      appC.includes('parameters.setProperty(runtime, "fabric", true);') &&
+      appC.includes('TraceSection s("UIManagerBinding::setSurfaceProps");'));
+
+  // ── UIM-37 ──
+  const weakFn = slice(prim, 'shadowNodeListFromWeakList', 700);
+  add('C767', 'UIM-37：valueFromShadowNode NativeState + 可选 runtime reference；空数组新建空 vector 且多一个孤立分号；weak→strong 任一过期返回 nullptr',
+    'wrapper / setRuntimeShadowNodeReference / nativeState / TODO empty / 孤立分号 / weak 返回 null',
+    'wrapper:' + prim.includes('ShadowNodeWrapper') +
+      ' ref:' + prim.includes('setRuntimeShadowNodeReference(wrappedShadowNode)') +
+      ' state:' + prim.includes('setNativeState(runtime, std::move(wrappedShadowNode));') +
+      ' native:' + prim.includes('object.getNativeState<ShadowNodeListWrapper>(runtime)->shadowNodeList') +
+      ' todo:' + prim.includes('TODO: return ShadowNode::emptySharedShadowNodeSharedList()') +
+      ' stray:' + prim.includes('({}));\n      ;') +
+      ' weakNull:' + weakFn.includes('return nullptr;'),
+    prim.includes('ShadowNodeWrapper') &&
+      prim.includes('setRuntimeShadowNodeReference(wrappedShadowNode)') &&
+      prim.includes('setNativeState(runtime, std::move(wrappedShadowNode));') &&
+      prim.includes('object.getNativeState<ShadowNodeListWrapper>(runtime)->shadowNodeList') &&
+      prim.includes('TODO: return ShadowNode::emptySharedShadowNodeSharedList()') &&
+      prim.includes('({}));\n      ;') &&
+      weakFn.includes('return nullptr;'));
+
+  // ── UIM-38 ──
+  const displayFn = slice(prim, 'displayModeToInt', 700);
+  add('C768', 'UIM-38：instanceHandleFromValue 先 assert 再判空（debug abort/release 静默）；tag/surfaceId 直接截断；displayMode 1/2/3 + assert + -1',
+    'assert / null return / Tag cast / SurfaceId cast / 1 2 3 / assert 0 / -1',
+    'assert:' + prim.includes('react_native_assert(!instanceHandleValue.isNull());') +
+      ' null:' + prim.includes('if (instanceHandleValue.isNull()) {') +
+      ' tag:' + prim.includes('return (Tag)value.getNumber();') +
+      ' surface:' + prim.includes('return (SurfaceId)value.getNumber();') +
+      ' visible:' + displayFn.includes('return 1;') +
+      ' suspended:' + displayFn.includes('return 2;') +
+      ' hidden:' + displayFn.includes('return 3;') +
+      ' invalid:' + displayFn.includes('react_native_assert(0 && "displayModeToInt: Invalid DisplayMode");') +
+      ' fallback:' + displayFn.includes('return -1;'),
+    prim.includes('react_native_assert(!instanceHandleValue.isNull());') &&
+      prim.includes('if (instanceHandleValue.isNull()) {') &&
+      prim.includes('return (Tag)value.getNumber();') &&
+      prim.includes('return (SurfaceId)value.getNumber();') &&
+      displayFn.includes('return 1;') && displayFn.includes('return 2;') &&
+      displayFn.includes('return 3;') &&
+      displayFn.includes('react_native_assert(0 && "displayModeToInt: Invalid DisplayMode");') &&
+      displayFn.includes('return -1;'));
+
+  // ── UIM-39 ──
+  const srpIncludes = grepCount('#include.*SurfaceRegistryBinding\\.h', {roots: ['packages'], exts: ['.h', '.cpp', '.mm', '.java', '.kt']});
+  add('C769', 'UIM-39：uimanager/consistency 两个 OBJECT 库 glob *.cpp；主库链接 consistency/mounting/runtimescheduler；两个编译选项；SurfaceRegistryBinding 是 0 include 的 warning shim',
+    'glob x2 / OBJECT x2 / links / 两个 flag / warning / include=0',
+    'glob:' + cmake.includes('file(GLOB react_renderer_uimanager_SRC CONFIGURE_DEPENDS *.cpp)') +
+      ' obj1:' + cmake.includes('add_library(react_renderer_uimanager OBJECT') +
+      ' obj2:' + ccmake.includes('add_library(react_renderer_uimanager_consistency OBJECT') +
+      ' linkCons:' + cmake.includes('react_renderer_uimanager_consistency') +
+      ' linkMount:' + cmake.includes('react_renderer_mounting') +
+      ' noUnused:' + cmake.includes('-Wno-unused-local-typedef') +
+      ' pedantic:' + cmake.includes('-Wpedantic') +
+      ' warning:' + srpH.includes('#warning "The SurfaceRegistryBinding.h header has been renamed to AppRegistryBinding.h"') +
+      ' includes:' + srpIncludes.occurrences,
+    cmake.includes('file(GLOB react_renderer_uimanager_SRC CONFIGURE_DEPENDS *.cpp)') &&
+      cmake.includes('add_library(react_renderer_uimanager OBJECT') &&
+      ccmake.includes('add_library(react_renderer_uimanager_consistency OBJECT') &&
+      cmake.includes('react_renderer_uimanager_consistency') &&
+      cmake.includes('react_renderer_mounting') &&
+      cmake.includes('-Wno-unused-local-typedef') &&
+      cmake.includes('-Wpedantic') &&
+      srpH.includes('#warning "The SurfaceRegistryBinding.h header has been renamed to AppRegistryBinding.h"') &&
+      srpIncludes.occurrences === 0);
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// 84 文档 · 文档侧
+// ────────────────────────────────────────────────────────────────────────
+{
+  addDocClaim('D307', '84 文档写明 completeSurface 的 result 未初始化（缺 surface 时读未初始化枚举）', /没有初值|未初始化枚举/, {min: 1});
+  addDocClaim('D308', '84 文档写明 clearRegistryOnSurfaceStop 在 if(shadowTree) 块之外', /块之外/, {min: 1});
+  addDocClaim('D309', '84 文档写明 setNativeProps 与 cloneNode 的 props 优先级相反', /优先级相反|方向相反/, {min: 1});
+  addDocClaim('D310', '84 文档写明 updateShadowTree 忽略旧根参数并可静默覆盖并发提交', /旧根竞态|静默覆盖/, {min: 1});
+  addDocClaim('D311', '84 文档写明 dispatchEventToJS 的 dropped 注释与实现不一致', /注释与实现不一致|will be dropped/, {min: 1});
+  addDocClaim('D312', '84 文档写明 findNodeAtPoint 手写加锁没有 RAII', /没有 RAII|非 RAII|永久锁死/, {min: 1});
+  addDocClaim('D313', '84 文档写明 hover 的 getLatestNode 返回局部 shared_ptr 的裸指针', /局部 shared_ptr|临时 shared_ptr|返回局部 shared_ptr/, {min: 1});
+  addDocClaim('D314', '84 文档写明 pointer capture 的 lost/got 监听器门禁恒真', /门禁恒真|恒为真|永远返回 true/, {min: 1});
+  addDocClaim('D315', '84 文档写明 binding 有 35 个方法名且未知成员返回 undefined', /35 个方法名|未知成员返回 undefined/, {min: 1});
+  addDocClaim('D316', '84 文档写明 UIManagerBinding 只有单个 eventHandler_ 槽位', /单槽|只有一个槽位/, {min: 1});
+  addDocClaim('D317', '84 文档写明 view transition 接口 12 个方法全部有默认体', /12 个虚方法全部有默认体|12 个方法全部有默认体|全部有默认体/, {min: 1});
+  addDocClaim('D318', '84 文档写明所有 UIManager 提交都在 registry 共享锁内', /提交都发生在 registry 的共享锁内|所有 UIManager 提交.*共享锁/, {min: 1});
+}
+
 // 报告
 // ────────────────────────────────────────────────────────────────────────
 const fail = checks.filter(c => !c.ok);

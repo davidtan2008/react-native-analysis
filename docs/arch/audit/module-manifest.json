@@ -40,7 +40,7 @@
         "packages/react-native/ReactCommon/react/renderer/runtimescheduler"
       ],
       "fileCount": 167,
-      "readFiles": 98,
+      "readFiles": 124,
       "status": "partial",
       "docs": [
         "02",
@@ -49,10 +49,11 @@
         "53",
         "58",
         "82",
-        "83"
+        "83",
+        "84"
       ],
-      "note": "A1 已读 13。本轮读 LayoutableShadowNode 的命中测试变换段（:287-303）；再读 renderer/scheduler/ 全部 9 个代码文件 1588 行 + renderer/runtimescheduler/ 全部 17 个 2235 行 = 26 个文件 3823 行（产出 82 文档，26 条结论 SCH-1…SCH-10 / RTS-1…RTS-16）。再读 renderer/mounting/ 全部 33 个代码文件 4979 行（不含 tests/ 6 文件 2333 行与 CMakeLists.txt；产出 83 文档，34 条结论 MOU-1…MOU-34）",
-      "gap": 69,
+      "note": "A1 已读 13。本轮读 LayoutableShadowNode 的命中测试变换段（:287-303）；再读 renderer/scheduler/ 全部 9 个代码文件 1588 行 + renderer/runtimescheduler/ 全部 17 个 2235 行 = 26 个文件 3823 行（产出 82 文档，26 条结论 SCH-1…SCH-10 / RTS-1…RTS-16）。再读 renderer/mounting/ 全部 33 个代码文件 4979 行（不含 tests/ 6 文件 2333 行与 CMakeLists.txt；产出 83 文档，34 条结论 MOU-1…MOU-34）。再读 renderer/uimanager/ 全部 26 个代码文件 4511 行（不含 tests/ 4 文件 1193 行与 2 个 CMakeLists.txt；产出 84 文档，39 条结论 UIM-1…UIM-39）",
+      "gap": 43,
       "$comment": "fileCount/gap 由 normalize-manifest.mjs 实测重算，勿手工填写"
     },
     {
@@ -903,7 +904,7 @@
           "C1",
           "E10"
         ],
-        "gap": 241
+        "gap": 215
       },
       {
         "n": 2,
@@ -999,7 +1000,7 @@
         "gap": 234
       }
     ],
-    "totalGap": 2929
+    "totalGap": 2903
   },
   "docsIndex": {
     "07": {
