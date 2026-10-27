@@ -6,13 +6,13 @@
 
 ## 检索入口
 
-> **本目录 84 篇文档按「主题 → 症状 → 结论 → 符号」四条路径组织，全部索引由脚本生成，禁止手写。**
+> **本目录 86 篇文档按「主题 → 症状 → 结论 → 符号」四条路径组织，全部索引由脚本生成，禁止手写。**
 
 | 入口 | 用途 | 从哪开始 |
 | --- | --- | --- |
 | **[00 · 主题地图](./INDEX/00-主题地图.md)** | **按主题域/子主题浏览** —— 8 个主题域、37 个子主题，每个子主题下列出覆盖它的文档、涉及的现象、平台与关键结论数量 | 「我要搞懂某个子系统」 |
 | **[01 · 症状排查手册](./INDEX/01-症状排查手册.md)** | **按现象排查** —— 17 类症状（崩溃/白屏/OOM/泄漏/启动变慢/卡顿/内容增长过快/布局/手势/动画/文本/桥接/属性/构建/调试/无障碍），每类列出相关文档与结论编号 | 「我遇到了某个问题」 |
-| **[02 · 结论速查表](./INDEX/02-结论速查表.md)** | **按结论编号直达** —— 全部 **676 条**编号结论（`ZZ-1` / `AAA-1` / `BBB-2` / `CCC-15` …）的摘要、源码位置与所属文档 | 「我记得有个结论编号」 |
+| **[02 · 结论速查表](./INDEX/02-结论速查表.md)** | **按结论编号直达** —— 全部 **738 条**编号结论（`ZZ-1` / `AAA-1` / `BBB-2` / `CCC-15` …）的摘要、源码位置与所属文档 | 「我记得有个结论编号」 |
 | **[03 · 符号与源码入口](./INDEX/03-符号与源码入口.md)** | **按符号/模块目录检索** —— 关键类与函数 → 讲解它的文档；模块 → 已读/缺口/文档 | 「我知道源码里的某个类」 |
 
 **每篇文档的 front-matter**（`topic` / `symptoms` / `symbols` / `claims` / `platforms` / `architecture` / `layer`）
@@ -109,6 +109,8 @@
 | [82-调度层的两个分叉与无锁读.md](./82-调度层的两个分叉与无锁读.md) | **【RTS-2】`scheduleRenderingUpdate` 在两个分叉上语义完全相反** —— Legacy 直接调 `renderingUpdate()`，Modern 只 `pendingRenderingUpdates_.push()`；而 Modern 头文件还承诺「步骤未启用时立即执行」，实现里没有这个分支，所以非任务期间产生的渲染更新要等下一个 JS 任务结束才排空；**【RTS-3】Legacy 的 `getShouldYield()` 只回答「有没有别的线程在等运行时」**（`runtimeAccessRequests_ > 0`），不看任务队列，于是 bridge 架构下排队中的更高优先级任务不会让 JS 让出；**【RTS-5 + RTS-11】两个分叉的错误处理相反** —— Modern 一次任务抛错就 `clearQueues()` 清空全部队列与待处理渲染更新，Legacy 只上报不清队列；而 Legacy 的 `isPerformingWork_` 是裸赋值、`onTaskError_` 就在 catch 内，处理器一抛异常这个门禁永久为 true，此后所有 `scheduleTask` 都不再调度且无日志；**【SCH-2】`SurfaceHandler` 的 `Parameters` 组声称「读只要 shared lock」，却有 1 处无锁写（`setContextContainer`）与 3 处无锁读**；**【SCH-4】`SurfaceManager::stopSurface` 对未注册 surface 仍执行 `registry_.erase(registry_.find(id))`** —— 重复 stop 即 `erase(end())`；**【RTS-8】** `unstable_scheduleCallback` 的 arity 声明为 3 却不读第 3 个参数，`{delay}` 被静默忽略 |
 | [83-挂载层的事务管线与三重自检.md](./83-挂载层的事务管线与三重自检.md) | **【MOU-6 核心】`ShadowTree::commit` 在 `preventShadowTreeCommitExhaustion()` 关闭时是 `while(true)` 无界重试** —— 唯一护栏 `react_native_assert(attempts < 1024)` 在 release 是空操作，并发提交压力下可无限忙循环；**【MOU-8 核心】两把互斥锁并存且锁选择每次调用重读 flag** —— 新路径的「共享锁」实为 `recursive_mutex` 上的排他锁，宣称的读并发不存在，而六个状态成员的注释仍只写旧锁；**【MOU-16/18 核心】`MountingCoordinator::push` 静默丢弃更小号 revision**（release 无日志）；override 分支在事务为空时**合成全套假 telemetry**（willLayout/didLayout/willCommit/didCommit/willDiff/didDiff 六事件无事件调用）并把事务号再自增；**【MOU-19 核心】introspection 的两棵对照树都不依赖 Differentiator** —— 差分器自身出错也能被比对抓出，override 事务只回放不比对；**【MOU-27 核心】`updateMountedFlag` 入口「Lists are identical」比较的是两个临时 vector 的地址**，几乎恒 false（死代码），注释还把 Stage 2/3 写成 State；**【MOU-21】差分七桶输出序**（destructiveDownward→update→**remove 唯一反序 rbegin/rend**→delete→create→downward→insert）；**【MOU-26】culling 只特判 ScrollView**（outset floor 对称外扩 + RTL 用内容宽−视图宽−origin.x 翻转，带 iOS permalink）；**【MOU-28】TelemetryController 手写 lock/unlock 非 RAII**，聚合窗口跨三个回调无锁、拷贝抛异常即永久锁死 |
 | [84-UIManager的门面与JS绑定.md](./84-UIManager的门面与JS绑定.md) | **【UIM-7 核心】`completeSurface` 在 surface 不存在时读未初始化枚举** —— `ShadowTree::CommitStatus result;` 无初值，仅 `Succeeded` 才更新 consistency 与 clearRegistry；`completeRoot` 写死 `stateReconciliation=true` / `mountSynchronously=false` / `source=React`；**【UIM-21 核心】`updateShadowTree` 的 commit 忽略传入旧根** —— 直接返回 BFS 前预构建的克隆，`ShadowTree::commit` 只比较 revision 号，并发提交可被静默覆盖，`options={}` 使 source=Unknown 且不更新 consistency；**【UIM-26 核心】`dispatchEventToJS` 注释说 dropped 却没有 return** —— `instanceHandle` 为空时仍用 null 调 handler，`currentEventPriority_` 无初值、异常跳过复位；**【UIM-27】`findNodeAtPoint` 手写 `std::mutex` lock/unlock 跨 JS 调用无 RAII**；**【UIM-31】lost/got 不被 `shouldEmitPointerEvent` 识别，两处门禁恒真**；**【UIM-23】binding 恰好 35 个方法名，未知成员返回 `undefined`**；**【UIM-33】retarget 四个解引用点全不判空** |
+| [85-ShadowNode树、Props与状态.md](./85-ShadowNode树、Props与状态.md) | **【CORE-3 核心】clone 复用 family 时用 `const_cast` 原地补 props，污染共享 Props**；**【CORE-30 核心】`RawPropsParser::at` 的 Release 路径没有死循环保护**，`keys_[0]` 越界读后可能永久循环；**【CORE-31】preparse 不清空 `values_`**，二次解析让值索引翻倍；**【CORE-22】`State::updateState` 可被多次调用，返回 `nullptr` 即取消**；**【CORE-35】Release 下 `Sealable` 全是空操作**；**【CORE-20】`createState` 解引用可空 state、`createFamily` 接受空 instanceHandle**；**【CORE-27】`RawValue` 的数组类型检查只看第一个元素**；**【CORE-17】`ComponentDescriptor` 有 11 个纯虚**；**【CORE-36】umbrella 恰好 49 条 include** |
+| [86-布局几何与事件管线.md](./86-布局几何与事件管线.md) | **【GEO-8 核心】`CornerInsets` 的向量分支赋值后没有 `return`** —— 合法 4 元数组必然落入清零 + `LOG(ERROR)`；**【GEO-1】`LayoutMetrics` 的 hash 漏 `positionType`/`wasLeftAndRightSwapped`**，debug 输出再漏 `fontSizeMultiplier`；**【GEO-7】`findNodeAtPoint` 按 `orderIndex` 稳定排序后从 `rbegin` 命中**（z 最大优先）；**【EVT-13 核心】`DynamicPointerEvent` 不 override `getType`**，`UIManagerBinding.cpp:80` 的 PointerEvent 专用分支对 JNI 动态 payload 不可达；**【EVT-11】`EventBeat` 的 owner 过期路径不复位 `isBeatCallbackScheduled_`**，异步节拍永久停摆；**【EVT-2】`setEnabled` disable 后不会重建 `eventTarget`**；**【EVT-8】null payload 只调 `onEventProcessingStart` 不调 end**；**【EVT-6】unique 去重遇第一个同 target 即 break**；**【EVT-3】`EventTarget` 对 `instanceHandle_` 不判空** |
 | [INDEX/](./INDEX/00-主题地图.md) | **检索索引（脚本生成）**：主题地图 / 症状排查手册 / 结论速查表 / 符号与源码入口 |
 | [audit/](./audit/) | 事实校验工具、模块覆盖清单与覆盖度分析（见下文「事实保证」） |
 
@@ -156,12 +158,12 @@ node docs/arch/audit/check-index.mjs       # 6) 索引体系：front-matter / �
 **当前状态（实测）：**
 
 ```
-引用 3928 条全部有效（3594 条带行号 + 334 条纯路径）
-代码块 1323 个 / 8995 行校验, 0 存疑
-文档间链接 585 条, 0 断链, 0 重复表格行
-核心事实断言 1805 条, 全部与源码一致
-索引  84 篇文档 / 8 个主题域 / 37 个子主题 / 17 类症状 / 676 条结论登记，0 问题
-已读 1106 / 4176 个非测试代码文件（26.5%）
+引用 4079 条全部有效（3745 条带行号 + 334 条纯路径）
+代码块 1359 个 / 9334 行校验, 0 存疑
+文档间链接 590 条, 0 断链, 0 重复表格行
+核心事实断言 1885 条, 全部与源码一致
+索引  86 篇文档 / 8 个主题域 / 37 个子主题 / 17 类症状 / 738 条结论登记，0 问题
+已读 1149 / 4176 个非测试代码文件（27.5%）
 ```
 
 > **重要**：前四项门禁只保证「引用的东西存在、贴的代码没造假」，
@@ -181,12 +183,12 @@ node docs/arch/audit/check-index.mjs       # 6) 索引体系：front-matter / �
 ```
 计入范围的代码文件:   4176   （已排除 785 个预编译/示例/类型声明/mock）
 manifest 声明覆盖:   4009   (96.0%)
-已读并被文档引用:     1106   (26.5%)
-模块缺口:            2903
+已读并被文档引用:     1149   (27.5%)
+模块缺口:            2860
 未被任何模块声明:      167   (4.0%)  → audit/unclaimed.json
 ```
 
-**恒等式校验**：`1106 已读 + 2903 缺口 + 167 未声明 = 4176` ✅
+**恒等式校验**：`1149 已读 + 2860 缺口 + 167 未声明 = 4176` ✅
 
 `status: done` 的严格含义是「**该目录下全部非测试文件都已读过且已成文**」，
 不是「这个主题写过」。`readFiles` 与 `fileCount` 的差值即为剩余缺口。
@@ -194,12 +196,12 @@ manifest 声明覆盖:   4009   (96.0%)
 ### 阅读计划（按优先级 + 前置依赖排序）
 
 完整计划见 [`audit/READ-PLAN.md`](./audit/READ-PLAN.md)，那里有 **37 个模块 × 缺口的逐项对账表**
-（合计 2903 = 实测值）。批次概览：
+（合计 2860 = 实测值）。批次概览：
 
 | 批次 | 主题 | 模块数 | 缺口 | 前置 |
 | --- | --- | --- | --- | --- |
 | **P0** | 基础设施补齐（Renderer 基础设施 / 错误处理 / 事件循环与性能计时 / 杂项包） | 4 | 63 | 无 |
-| **P1** | 渲染器核心 + iOS 平台实现（含 iOS 剩余） | 3 | 215 | A1 → C1 |
+| **P1** | 渲染器核心 + iOS 平台实现（含 iOS 剩余） | 3 | 172 | A1 → C1 |
 | **P2** | Fabric 组件层 + 通用视图组件 | 2 | 258 | A1 |
 | **P3** | Android 平台层 + JNI 胶水层 + Android 根级 API | 3 | 635 | A2 + A3 |
 | **P4** | JS 启动装配 + 运行时与 JS 引擎接口 + 内存管理 | 3 | 124 | A5 → A3 |

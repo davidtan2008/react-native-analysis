@@ -14968,6 +14968,309 @@ addDocClaim('D217', '文档给出了哈希契约违反在 AttributedString 一�
   addDocClaim('D318', '84 文档写明所有 UIManager 提交都在 registry 共享锁内', /提交都发生在 registry 的共享锁内|所有 UIManager 提交.*共享锁/, {min: 1});
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// 85 文档 · 源码侧（CORE-1..CORE-36）
+{
+  const rd = p => fs.readFileSync(path.join(REPO, p), 'utf8');
+  const has = (src, s) => src.includes(s);
+  const C = 'packages/react-native/ReactCommon/react/renderer/core/';
+  const sn = rd(C + 'ShadowNode.cpp');
+  const sf = rd(C + 'ShadowNodeFamily.cpp');
+  const fh = rd(C + 'ShadowNodeFragment.h');
+  const fc = rd(C + 'ShadowNodeFragment.cpp');
+  const th = rd(C + 'ShadowNodeTraits.h');
+  const cd = rd(C + 'ComponentDescriptor.h');
+  const ccd = rd(C + 'ConcreteComponentDescriptor.h');
+  const csn = rd(C + 'ConcreteShadowNode.h');
+  const cst = rd(C + 'ConcreteState.h');
+  const sh = rd(C + 'State.h');
+  const sc = rd(C + 'State.cpp');
+  const pr = rd(C + 'Props.h');
+  const pm = rd(C + 'PropsMacros.h');
+  const rv = rd(C + 'RawValue.h');
+  const rp = rd(C + 'RawProps.h');
+  const rpc = rd(C + 'RawProps.cpp');
+  const par = rd(C + 'RawPropsParser.cpp');
+  const km = rd(C + 'RawPropsKeyMap.cpp');
+  const pc = rd(C + 'propsConversions.h');
+  const dp = rd(C + 'DynamicPropsUtilities.cpp');
+  const dph = rd(C + 'DynamicPropsUtilities.h');
+  const se = rd(C + 'Sealable.h');
+  const ih = rd(C + 'InstanceHandle.cpp');
+  const tg = rd(C + 'ReactRootViewTagGenerator.cpp');
+  const prim = rd(C + 'ReactPrimitives.h');
+  const umb = rd(C + 'React/RendererCore.h');
+
+  const ctorStart = sn.indexOf('ShadowNode::ShadowNode(');
+  const cloneStart = sn.indexOf('std::shared_ptr<ShadowNode> ShadowNode::clone(');
+  const ctorReg = sn.slice(ctorStart, cloneStart);
+
+  let ok = has(sn, 'static const auto emptySharedShadowNodeSharedList') && has(sn, 'ShadowNodeWrapper::~ShadowNodeWrapper() = default;');
+  add('C770', 'CORE-1：emptyShared 是函数内 static 空容器；ShadowNodeWrapper 析构定义在 .cpp（key function 防 vtable 到处发射）', 'static 空容器 + cpp 析构', ok ? '命中' : '未命中', ok);
+
+  const stateCommits = (ctorReg.match(/setMostRecentState/g) || []).length;
+  const sharedSets = (ctorReg.match(/ChildrenAreShared/g) || []).length;
+  ok = stateCommits === 1 && sharedSets === 2;
+  add('C771', 'CORE-2：ondemand 构造函数提交 state（setMostRecentState），clone 构造函数不提交；两个构造函数都无条件设置 ChildrenAreShared', 'state 提交 1 次 + shared 2 次', 'state=' + stateCommits + ' shared=' + sharedSets, ok);
+
+  ok = has(sn, 'propsForClonedShadowNode') && has(sn, 'const_cast<Props&>(*props)') && has(sn, 'RN_SERIALIZABLE_STATE');
+  add('C772', 'CORE-3：propsForClonedShadowNode 用 const_cast 原地补 props，props 在节点间共享（修改会污染同 family 节点）', 'function + const_cast + ifdef', ok ? '命中' : '未命中', ok);
+
+  ok = has(sn, 'TODO: We might need to merge fragment.props with') && has(sn, 'fragment.props == ShadowNodeFragment::propsPlaceholder()') && has(sn, 'nativeProps_DEPRECATED');
+  add('C773', 'CORE-4：显式 props 与 nativeProps_DEPRECATED 同时存在时合并未实现（TODO），nativeProps 被静默忽略', 'TODO + placeholder 比较', ok ? '命中' : '未命中', ok);
+
+  const rc = sn.slice(sn.indexOf('void ShadowNode::replaceChild'), sn.indexOf('void ShadowNode::cloneChildrenIfShared'));
+  ok = (rc.match(/return;/g) || []).length === 2 && has(rc, 'react_native_assert(false && "Child to replace was not found.")');
+  add('C774', 'CORE-5：replaceChild 两个成功分支都在 propagateUncullableTraitsFromChildren 之前 return，只有找不到孩子时才传播 trait', '2 次成功 return + assert', 'returns=' + (rc.match(/return;/g) || []).length, ok);
+
+  const pReg = sn.slice(sn.indexOf('void ShadowNode::propagateUncullableTraitsFromChildren'), sn.indexOf('void ShadowNode::propagateUncullableTraitsFromChildren') + 1200);
+  ok = has(pReg, 'enableViewCulling()') && has(pReg, 'Unstable_uncullableTrace') && has(pReg, 'Unstable_uncullableView');
+  add('C775', 'CORE-6：uncullable 传播只在 enableViewCulling() 门内执行，孩子带 uncullableView 或 uncullableTrace 都会置父节点 Trace，否则清除', 'flag + 两个 trait', ok ? '命中' : '未命中', ok);
+
+  const mReg = sn.slice(sn.indexOf('void ShadowNode::setMounted'), sn.indexOf('void ShadowNode::setMounted') + 500);
+  ok = !has(mReg, 'hasBeenMounted_ = false') && has(mReg, 'eventEmitter_->setEnabled(mounted)');
+  add('C776', 'CORE-7：setMounted(false) 不清 hasBeenMounted_，只调 setEnabled；hasBeenMounted_ 表示「曾经挂载过」', '无 false 赋值 + setEnabled', ok ? '命中' : '未命中', ok);
+
+  ok = has(sn, 'thread_local bool useRuntimeShadowNodeReferenceUpdateOnThread') && has(sn, 'runtimeShadowNodeReference');
+  add('C777', 'CORE-8：运行时引用转移有 thread_local 开关，clone 是否继承 wrapper 由 fragment 与全局/线程 flag 共同决定', 'thread_local + fragment 字段', ok ? '命中' : '未命中', ok);
+
+  const ctReg = sn.slice(sn.indexOf('std::shared_ptr<ShadowNode> ShadowNode::cloneTree'), sn.indexOf('std::shared_ptr<ShadowNode> ShadowNode::cloneTree') + 2600);
+  ok = has(ctReg, 'getAncestors') && has(ctReg, 'react_native_assert') && has(ctReg, 'callback(');
+  add('C778', 'CORE-9：cloneTree 通过 getAncestors 定位链，回调为空时 assert；clone 从根向下逐层复制', 'getAncestors + assert + callback', ok ? '命中' : '未命中', ok);
+
+  const cmReg = sn.slice(sn.indexOf('ShadowNode::cloneMultiple('), sn.indexOf('ShadowNode::cloneMultiple(') + 2600);
+  ok = has(cmReg, 'childrenCount.contains(getTag())') && has(cmReg, 'nullptr');
+  add('C779', 'CORE-10：cloneMultiple 用 childrenCount 判断分支是否被请求，未命中的分支返回 nullptr（根不在表中时得到空树）', 'contains(getTag) + nullptr', ok ? '命中' : '未命中', ok);
+
+  ok = has(sf, '~ShadowNodeFamily') && has(sf, 'if (!hasBeenMounted_ && onUnmountedFamilyDestroyedCallback_ != nullptr)') && has(sf, 'parent_.lock()');
+  add('C780', 'CORE-11：ShadowNodeFamily 析构只在「从未挂载」时回调 onUnmountedFamilyDestroyedCallback；parent_ 是 weak', 'dtor 条件 + weak parent', ok ? '命中' : '未命中', ok);
+
+  const gaReg = sf.slice(sf.indexOf('ShadowNodeFamily::getAncestors'), sf.indexOf('ShadowNodeFamily::getAncestors') + 1600);
+  ok = has(gaReg, 'parent_.lock()') && has(gaReg, '*parentNode->children_') && has(gaReg, 'for (const auto& childNode');
+  add('C781', 'CORE-12：getAncestors 每层 parent_.lock() 后线性扫描 children_ 找自己，复杂度 O(depth × siblings)', 'weak lock + 线性扫描', ok ? '命中' : '未命中', ok);
+
+  ok = (sf.match(/std::unique_lock/g) || []).length === 3;
+  add('C782', 'CORE-13：family state 的读与写都用 unique_lock（读也独占），共 3 处', 'unique_lock = 3', 'count=' + (sf.match(/std::unique_lock/g) || []).length, ok);
+
+  const drReg = sf.slice(sf.indexOf('ShadowNodeFamily::dispatchRawState'), sf.indexOf('ShadowNodeFamily::dispatchRawState') + 500);
+  ok = has(drReg, 'eventDispatcher_.lock()') && has(drReg, 'if (!eventDispatcher)');
+  add('C783', 'CORE-14：dispatchRawState 在 weak dispatcher 过期时静默 return，state 更新丢失且无任何日志', 'lock + 早退', ok ? '命中' : '未命中', ok);
+
+  ok = has(fh, 'const Props::Shared &props = propsPlaceholder();') && has(fc, 'NO_DESTROY static');
+  add('C784', 'CORE-15：ShadowNodeFragment 的三个 Shared 字段都是 const&，默认值来自 cpp 里的 NO_DESTROY static 对象（永不析构）', 'const& + NO_DESTROY', ok ? '命中' : '未命中', ok);
+
+  ok = has(th, 'inline bool check(Trait traits) const') && has(th, 'traits_ & traits) == traits') && has(th, 'int32_t');
+  add('C785', 'CORE-16：Traits 是 int32_t 位掩码，check 要求「全部命中」而非任一命中', 'int32 + all-of check', ok ? '命中' : '未命中', ok);
+
+  const pureCount = (cd.match(/= 0;/g) || []).length;
+  ok = pureCount === 11 && /shared_ptr<const void>/.test(cd);
+  add('C786', 'CORE-17：ComponentDescriptor 有 11 个纯虚（10 公开 + 1 受保护），Flavor 是 shared_ptr<const void>', '11 个 = 0;', 'count=' + pureCount, ok);
+
+  ok = has(ccd, 'HasIteratorSetterCtor') && has(ccd, 'enableCppPropsIteratorSetter') && has(ccd, 'kSupportsIteratorSetter');
+  add('C787', 'CORE-18：是否 prepare 迭代器解析器取决于编译期 concept 与运行时 feature flag 两者都满足', 'concept + runtime flag', ok ? '命中' : '未命中', ok);
+
+  ok = has(ccd, 'return ShadowNodeT::defaultSharedProps();') && has(ccd, 'kSupportsIteratorSetter');
+  add('C788', 'CORE-19：cloneProps 在 base props 为空且 RawProps 为空时直接返回 defaultSharedProps 快路径', 'defaultSharedProps + kSupports', ok ? '命中' : '未命中', ok);
+
+  ok = has(ccd, '*family.getMostRecentState()') && has(ccd, 'std::make_shared<EventTarget>(fragment.instanceHandle');
+  add('C789', 'CORE-20：createState 对非默认 StateData 直接解引用 getMostRecentState()（可为空）；createFamily 允许空 instanceHandle 传给 EventTarget', '解引用 + 空 handle', ok ? '命中' : '未命中', ok);
+
+  ok = has(csn, 'react_native_assert(state_ && "State must not be `nullptr`.")') && has(csn, '*state_');
+  add('C790', 'CORE-21：ConcreteShadowNode::getStateData 先 assert 非空再解引用，Release 下是确定性 UB', 'assert + 解引用', ok ? '命中' : '未命中', ok);
+
+  ok = has(cst, 'might be called several times') && has(cst, 'nullptr');
+  add('C791', 'CORE-22：ConcreteState::updateState 可能被多次调用；返回 nullptr 表示取消更新', '注释 + nullptr', ok ? '命中' : '未命中', ok);
+
+  ok = has(sh, 'initialRevisionValue = 1') && has(sh, 'mutable bool isObsolete_') && has(sc, 'revision_(previousState.revision_ + 1)');
+  add('C792', 'CORE-23：State 初始 revision=1，每次派生 +1；isObsolete_ 是 mutable bool（const 的 markObsolete 可写）', 'rev=1 + mutable obsolete', ok ? '命中' : '未命中', ok);
+
+  ok = has(pr, 'public virtual Sealable, public virtual DebugStringConvertible') && has(pr, 'return folly::dynamic::object();');
+  add('C793', 'CORE-24：Props 继承 Sealable 与 DebugStringConvertible，getDiffProps 默认返回空 object', '双继承 + 空 diff', ok ? '命中' : '未命中', ok);
+
+  const catchCount = (pm.match(/catch \(const std::exception/g) || []).length;
+  ok = catchCount === 1 && has(pm, 'fnv1a') && has(pm, 'REBUILD_FIELD_SWITCH_CASE');
+  add('C794', 'CORE-25：PropsMacros 只有一处 try/catch（RAW_SET_PROP 路径无 catch），字段用 fnv1a 哈希分派', 'catch=1 + fnv1a', 'catch=' + catchCount, ok);
+
+  const friendCount = (rv.match(/friend class/g) || []).length;
+  ok = has(rv, 'RawValue(const RawValue &other)') && has(rv, 'jsi::Value(*runtime, value)') && friendCount === 3;
+  add('C795', 'CORE-26：RawValue 拷贝构造私有、只对 3 个 friend 开放；存 jsi::Value 时立即取值而不是持 runtime', 'private copy + 3 friends', 'friends=' + friendCount, ok);
+
+  ok = has(rv, 'return checkValueType(item, (T *)nullptr);') && has(rv, 'Note: We test only one element.');
+  add('C796', 'CORE-27：数组类型检查只看第一个元素（空容器直接放行），JsiValuePair 两条分支仅取 first', 'first-element check', ok ? '命中' : '未命中', ok);
+
+  ok = has(rp, 'enum class Mode { Empty, JSI, Dynamic };') && has(rpc, 'react_native_assert(parser_ == nullptr') && has(rpc, 'jsi::Value(*runtime_, other.value_)');
+  add('C797', 'CORE-28：RawProps 是 Empty/JSI/Dynamic 三态；重复 parse 的 assert 仅在 Debug 生效；拷贝深拷贝 jsi/dynamic 但不拷 preparse 状态', '3 态 + 深拷贝', ok ? '命中' : '未命中', ok);
+
+  ok = has(rp, 'void forEachItem') && has(rp, 'auto object = value_.asObject(*runtime_);') && has(rp, 'std::string_view');
+  add('C798', 'CORE-29：forEachItem 按 mode 分派，JSI 分支 asObject 后才报错，键类型是 string_view', '分派 + string_view', ok ? '命中' : '未命中', ok);
+
+  ok = has(par, '#ifdef REACT_NATIVE_DEBUG') && has(par, 'resetLoop') && has(par, 'while (key != keys_[rawProps.keyIndexCursor_]);');
+  add('C799', 'CORE-30：RawPropsParser::at 用 resetLoop 重置游标；死循环保护仅在 DEBUG 编译，Release 下 keys_[0] 越界读后可能死循环', 'resetLoop + DEBUG 保护', ok ? '命中' : '未命中', ok);
+
+  const preReg = par.slice(par.indexOf('preparse('));
+  ok = has(preReg, 'values_.emplace_back') && !has(preReg, 'values_.clear()') && has(preReg, 'keyIndexToValueIndex_.resize');
+  add('C800', 'CORE-31：preparse 不清空 values_，二次调用会让值索引翻倍；keyIndexToValueIndex_ 只 resize 不重置', 'emplace_back + 无 clear', ok ? '命中' : '未命中', ok);
+
+  ok = has(km, 'kPropNameLengthHardCap - 1') && has(km, 'length >= kPropNameLengthHardCap') && has(km, 'kRawPropsValueIndexEmpty');
+  add('C801', 'CORE-32：RawPropsKeyMap 的键长上限是 kPropNameLengthHardCap-1，超长键被跳过（length >= cap 直接 continue）', 'cap-1 + 跳过', ok ? '命中' : '未命中', ok);
+
+  ok = has(pc, 'return sourceValue;') && has(pc, 'return defaultValue;') && (pc.match(/catch \(const std::exception/g) || []).length >= 1 && has(pc, 'std::optional<T>');
+  add('C802', 'CORE-33：convertRawProp 优先取 sourceValue，缺失时返回 defaultValue；转换异常走 catch 回退，optional 类型有专门分支', '三级回退 + optional', ok ? '命中' : '未命中', ok);
+
+  ok = has(dp, 'NullValueStrategy::Ignore') && has(dp, 'result[oldPair.first] = nullptr') && has(dp, 'an indication for the legacy mounting layer') && has(dph, 'Override');
+  add('C803', 'CORE-34：mergeDynamicProps 的 Ignore 策略跳过 source 缺失的键，Override 写入 null；diffDynamicProps 对删除键写 nullptr 供旧挂载层清理', 'Ignore/Override + nullptr', ok ? '命中' : '未命中', ok);
+
+  ok = has(se, 'inline void seal() const {}') && has(se, 'inline void ensureUnsealed() const {}') && has(sn, 'if (getSealed())');
+  add('C804', 'CORE-35：Sealable 的 seal/ensureUnsealed 在 Release 下是空操作；getSealed() 恒真使 sealRecursive 首轮即短路', 'Release 空操作 + 恒真', ok ? '命中' : '未命中', ok);
+
+  const incCount = (umb.match(/^\s*#include/gm) || []).length;
+  ok = has(ih, 'asObject(runtime)') && has(tg, 'nextRootViewTag += ROOT_VIEW_TAG_INCREMENT') && has(prim, 'using ComponentName = const char *;') && incCount === 49;
+  add('C805', 'CORE-36：InstanceHandle 构造即 asObject；根 tag 是 atomic += 10 从 1 起（首值 11）；ComponentName 是裸 const char*；umbrella 49 条 include', '4 个最小约定', 'includes=' + incCount, ok);
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// 86 文档 · 源码侧（GEO-1..9 + EVT-1..17）
+{
+  const rd = p => fs.readFileSync(path.join(REPO, p), 'utf8');
+  const has = (src, s) => src.includes(s);
+  const C = 'packages/react-native/ReactCommon/react/renderer/core/';
+  const U = 'packages/react-native/ReactCommon/react/renderer/uimanager/';
+  const lm = rd(C + 'LayoutMetrics.h');
+  const lmc = rd(C + 'LayoutMetrics.cpp');
+  const lcon = rd(C + 'LayoutConstraints.cpp');
+  const lctx = rd(C + 'LayoutContext.h');
+  const lan = rd(C + 'LayoutableShadowNode.cpp');
+  const lanh = rd(C + 'LayoutableShadowNode.h');
+  const gc = rd(C + 'graphicsConversions.h');
+  const lp = rd(C + 'LayoutPrimitives.h');
+  const ee = rd(C + 'EventEmitter.cpp');
+  const eeh = rd(C + 'EventEmitter.h');
+  const et = rd(C + 'EventTarget.cpp');
+  const ed = rd(C + 'EventDispatcher.cpp');
+  const el = rd(C + 'EventListener.cpp');
+  const eq = rd(C + 'EventQueue.cpp');
+  const eqp = rd(C + 'EventQueueProcessor.cpp');
+  const eb = rd(C + 'EventBeat.cpp');
+  const re = rd(C + 'RawEvent.h');
+  const dep = rd(C + 'DynamicEventPayload.cpp');
+  const dpeh = rd(C + 'DynamicPointerEvent.h');
+  const dpec = rd(C + 'DynamicPointerEvent.cpp');
+  const vfp = rd(C + 'ValueFactoryEventPayload.cpp');
+  const ep = rd(C + 'EventPayload.h');
+  const elog = rd(C + 'EventLogger.h');
+  const epipe = rd(C + 'EventPipe.h');
+  const rep = rd(C + 'ReactEventPriority.h');
+  const ub = rd(U + 'UIManagerBinding.cpp');
+
+  const hashReg = lm.slice(lm.indexOf('struct hash<facebook::react::LayoutMetrics>'));
+  let ok = has(lm, 'bool operator==(const LayoutMetrics &rhs) const = default;') && has(hashReg, 'overflowInset') && !has(hashReg, 'positionType') && !has(hashReg, 'wasLeftAndRightSwapped');
+  add('C806', 'GEO-1：LayoutMetrics 10 字段、operator== 全字段；hash 漏 positionType/wasLeftAndRightSwapped；debug 再漏 fontSizeMultiplier；EmptyLayoutMetrics 仅 frame.size={-1,-1}', 'hash 缺 2 字段', ok ? '命中' : '未命中', ok);
+
+  ok = has(lcon, 'std::max(minimumSize.width, std::min(maximumSize.width');
+  add('C807', 'GEO-2：LayoutConstraints 默认 [0,0]→[+inf,+inf]；clamp 逐轴 max(min, min(max, size))，min>max 时静默返回 min；layoutDirection 不参与', 'clamp 表达式', ok ? '命中' : '未命中', ok);
+
+  ok = has(lctx, 'std::vector<const LayoutableShadowNode *> *affectedNodes{};') && has(lctx, 'lhs.affectedNodes');
+  add('C808', 'GEO-3：LayoutContext.affectedNodes 是裸指针容器（不拥有、必须比 pass 活得久），operator== 比较指针地址', '裸指针 + 地址比较', ok ? '命中' : '未命中', ok);
+
+  ok = has(lan, 'if (&descendantNodeFamily == &ancestorNode.getFamily())') && has(lan, 'layoutMetrics.frame.origin = {.x = 0, .y = 0};');
+  add('C809', 'GEO-4：同 family 快路径返回节点自身 metrics；displayType==None→Empty；includeTransform 时 frame 乘 transform；Relative 版清零 origin、fromRoot 版保留', '同 family 短路 + origin', ok ? '命中' : '未命中', ok);
+
+  ok = has(lan, 'applyWithCenter') && has(lan, 'getContentOriginOffset(true)') && has(lan, 'RootNodeKind') && has(lan, 'resultFrame.size.width == 0 && resultFrame.size.height == 0');
+  add('C810', 'GEO-5：全链相对布局遇 RootNodeKind 停；逐层累加 origin + applyWithCenter + contentOriginOffset(true)；root 默认不乘 transform；仅宽高同时为 0 判 Empty', '4 个关键调用', ok ? '命中' : '未命中', ok);
+
+  ok = has(lan, 'localLayoutContext.affectedNodes = nullptr;') && has(lan, 'clone({})') && has(lan, 'return {};');
+  add('C811', 'GEO-6：measureContent 默认零尺寸；measure 在 clone({}) 上跑 layoutTree 只返回 frame.size；强制 affectedNodes=nullptr，永不上报 affected 节点', 'clone + nullptr', ok ? '命中' : '未命中', ok);
+
+  ok = has(lan, 'isVerticalInversion') && has(lan, 'stable_sort') && has(lan, '.rbegin()') && has(lan, 'getContentOriginOffset(false)') && has(lan, 'canBeTouchTarget() ? node : nullptr');
+  add('C812', 'GEO-7：findNodeAtPoint 支持 overflow 区域、inversion 绕中心翻转；孩子按 orderIndex 稳定排序后从 rbegin（z 最大）递归；最后 canBeTouchTarget 决定返回', 'z 序 + 翻转', ok ? '命中' : '未命中', ok);
+
+  const ciReg = gc.slice(gc.indexOf('CornerInsets &result'));
+  ok = !has(gc, 'Unsupported Point map key') && has(ciReg, 'result = {.topLeft = 0') && has(ciReg, 'LOG(ERROR) << "Unsupported CornerInsets type"');
+  add('C813', 'GEO-8：Point 的 map 分支不校验未知 key（Size/EdgeInsets 会 LOG+expect）；数组分支用 >=N；CornerInsets 向量分支赋值后无 return，合法 4 元数组必然清零 + LOG(ERROR)', '缺 return + 无 key 校验', ok ? '命中' : '未命中', ok);
+
+  ok = has(lp, 'enum class DisplayType') && has(lp, 'enum class PositionType') && has(lp, 'enum class LayoutDirection') && has(lanh, 'virtual void layoutTree') && has(lanh, 'virtual Size measure(') && has(lanh, 'bool clipSpecifiedAncestor{true};');
+  add('C814', 'GEO-9：布局原语 3 枚举；纯虚只有 layoutTree/layout/dirtyLayout/getIsLayoutClean；LayoutInspectingPolicy 4 个 bool 默认 T/F/F/T', '枚举 + 接口', ok ? '命中' : '未命中', ok);
+
+  ok = has(ee, 'hasPrefix') && has(ee, 'prefixedType[0]') && has(ee, 'return "top" + prefixedType;');
+  add('C815', 'EVT-1：normalizeEventType 三分支（top 原样/on→top/首字母大写加 top）；空串返回 "top" 且写 null 终结符合法；所有 dispatch 先 normalize', '三分支 + 空串', ok ? '命中' : '未命中', ok);
+
+  ok = has(ee, 'enableCounter_ += enabled ? 1 : -1;') && has(ee, 'eventTarget_.reset();');
+  add('C816', 'EVT-2：setEnabled 用 enableCounter_ ±1，>0 才启用；reset 只在归零时发生，enable 分支没有重建 target 的代码', '计数 + 无重建', ok ? '命中' : '未命中', ok);
+
+  ok = has(et, 'instanceHandle_->getInstanceHandle(runtime)') && has(et, 'instanceHandle_->getTag()') && has(et, '// react_native_assert(!strongInstanceHandle_.isNull());');
+  add('C817', 'EVT-3：EventTarget 的 retain/getTag 都不判空 instanceHandle_；null/undefined strong handle 的 assert 被 TODO mustfix 注释掉；release 有 retainCount_>0 保护', '不判空 + 注释断言', ok ? '命中' : '未命中', ok);
+
+  const duReg = ed.slice(ed.indexOf('EventDispatcher::dispatchUniqueEvent'), ed.indexOf('EventDispatcher::dispatchUniqueEvent') + 400);
+  ok = !has(duReg, 'onEventStart') && has(duReg, 'enqueueUniqueEvent');
+  add('C818', 'EVT-4：dispatchUniqueEvent 只做 listener 拦截 + 入队，不调用 EventLogger::onEventStart，unique 事件 loggingTag 恒 0', 'unique 路径无 onEventStart', ok ? '命中' : '未命中', ok);
+
+  ok = has(el, 'std::shared_lock lock(mutex_);') && has(el, '(*listener)(event)');
+  add('C819', 'EVT-5：willDispatchEvent 在 shared_lock 内执行用户回调；addListener 不拒绝空 std::function（调用抛 bad_function_call）；回调内增删会自死锁', 'shared_lock 内回调', ok ? '命中' : '未命中', ok);
+
+  ok = has(eq, 'it->isUnique && it->type == rawEvent.type') && has(eq, '*repeatedEvent = std::move(rawEvent)') && has(eq, 'break;');
+  add('C820', 'EVT-6：unique 去重从队尾回溯，遇第一个同 eventTarget 即 break；同 type 才原地替换，否则 push_back；不跨类型、不跨中间事件', 'break + 原地替换', ok ? '命中' : '未命中', ok);
+
+  ok = has(eq, 'stateUpdate.family == position.family') && has(eq, 'stateUpdateQueue_.back()') && has(eq, 'UpdateMode::unstable_Immediate') && has(eq, 'flushStateUpdates');
+  add('C821', 'EVT-7：state 只在队尾同 family 时 pop_back 合并；unstable_Immediate 立即同步 flush；onBeat 先 state 后 events', '队尾合并 + 两种模式', ok ? '命中' : '未命中', ok);
+
+  const startIdx = eqp.indexOf('onEventProcessingStart');
+  const nullIdx = eqp.indexOf('eventPayload == nullptr');
+  ok = has(eqp, 'SCOPE_EXIT') && nullIdx > startIdx && has(eqp, 'continue;');
+  add('C822', 'EVT-8：flushEvents 用 SCOPE_EXIT 保证 retain/release 成对；null payload 先 onEventProcessingStart 再 continue，永远不触发 onEventProcessingEnd', 'start 早于 null 检查', ok ? '命中' : '未命中', ok);
+
+  ok = has(eqp, 'fixMappingOfEventPrioritiesBetweenFabricAndReact') && has(eqp, 'hasContinuousEventStarted_ = true;') && has(eqp, 'RawEvent::Category::ContinuousEnd');
+  add('C823', 'EVT-9：两套优先级映射由 feature flag 切换；新映射 ContinuousStart/End→Discrete 并在 switch 内维护标志；旧映射只在循环底部置位；标志非原子', 'flag + 标志维护', ok ? '命中' : '未命中', ok);
+
+  ok = has(eb, 'requestSynchronous(Tag /*tag*/)') && has(eb, 'isSynchronousRequested_ = true;') && has(eeh, 'eventDispatcher_.lock()') && has(eeh, 'getTag()');
+  add('C824', 'EVT-10：requestSynchronous(Tag) 完全忽略 tag；tag 从 EventQueue 传来无消费者；EventEmitter::experimental_flushSync 在 dispatcher 失效时连同步函数都不执行', 'tag 被注释掉', ok ? '命中' : '未命中', ok);
+
+  const ownReg = eb.slice(eb.indexOf('auto owner = ownerBox->owner.lock();'), eb.indexOf('auto owner = ownerBox->owner.lock();') + 300);
+  ok = has(ownReg, 'if (!owner)') && ownReg.indexOf('return;') > ownReg.indexOf('if (!owner)') && ownReg.indexOf('isBeatCallbackScheduled_ = false;') > ownReg.indexOf('return;');
+  add('C825', 'EVT-11：beat lambda 在 owner 过期时直接 return，isBeatCallbackScheduled_ 不复位；此后异步请求永久早退，只有同步请求能恢复一次', 'owner 过期 + 不复位', ok ? '命中' : '未命中', ok);
+
+  ok = has(re, 'ContinuousStart = 0') && has(re, 'Idle = 5') && has(re, 'EventCategoryDef.java') && has(re, 'loggingTag{0}');
+  add('C826', 'EVT-12：RawEvent 6 个 Category（0..5，Java 侧手工同步）、8 字段；默认 category=Unspecified/isUnique=false/loggingTag=0/时间戳 now', '6 类 + 默认值', ok ? '命中' : '未命中', ok);
+
+  ok = has(dep, 'payload.find("pointerId")') && !has(dpeh, 'getType') && has(ub, 'EventPayloadType::PointerEvent');
+  add('C827', 'EVT-13：create 用 payload.find("pointerId") 猜类型且不查 isObject；DynamicPointerEvent 不 override getType，使 UIManagerBinding 的 PointerEvent 分支对动态 payload 不可达', 'find + 无 getType', ok ? '命中' : '未命中', ok);
+
+  ok = has(dep, 'std::stoi(key)') && has(dep, '!dynamic.empty()') && has(dep, 'Type::DOUBLE');
+  add('C828', 'EVT-14：extractValue 在副本上下钻；空 object/array 两分支都跳过；数组下标 std::stoi 无 catch；只接受 DOUBLE/INT64', 'stoi + 空容器跳过', ok ? '命中' : '未命中', ok);
+
+  ok = has(dpec, 'payload_["hitPathForEventListener"]') && has(dpec, 'item.asInt()') && has(dpeh, 'std::optional<std::vector<Tag>>');
+  add('C829', 'EVT-15：DynamicPointerEvent 只认 hitPathForEventListener 为 ARRAY，逐项 asInt 填 optional<vector<Tag>>；getter 返回拷贝的 const 引用', 'ARRAY + asInt', ok ? '命中' : '未命中', ok);
+
+  ok = has(vfp, 'valueFactory_(runtime)') && has(ub, 'payload.isNull()') && has(ep, 'std::optional<double> extractValue');
+  add('C830', 'EVT-16：ValueFactoryEventPayload 在 asJSIValue 时惰性调用 factory；返回 null 会被 dispatchEventToJS 解释为取消事件；EventPayload::extractValue 默认 nullopt', '惰性求值 + 取消语义', ok ? '命中' : '未命中', ok);
+
+  ok = has(elog, 'using EventTag = unsigned int') && has(elog, 'EMPTY_EVENT_TAG = 0') && has(epipe, 'using EventPipe = std::function<void(') && has(rep, 'Default,') && has(rep, 'serialize');
+  add('C831', 'EVT-17：EventLogger 3 纯虚（tag=unsigned、EMPTY=0）；EventPipe 6 参 std::function、Conclusion 只收 runtime 每批一次；ReactEventPriority 4 值 + constexpr serialize', '协议三件套', ok ? '命中' : '未命中', ok);
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// 85 文档 · 文档侧（10 条）
+  addDocClaim('D319', '85 文档写明 replaceChild 的两个成功分支都在 trait 传播之前 return', /两个成功分支都在 trait 传播之前/, {min: 1});
+  addDocClaim('D320', '85 文档写明 getAncestors 的复杂度是 depth × siblings', /depth\s*[×x]\s*siblings/, {min: 1});
+  addDocClaim('D321', '85 文档写明 family state 的读操作也用 unique_lock（读也独占）', /读也独占/, {min: 1});
+  addDocClaim('D322', '85 文档写明显式 props 与 nativeProps 的合并没有实现（TODO）', /TODO 未实现/, {min: 1});
+  addDocClaim('D323', '85 文档写明两个 ShadowNode 构造函数都无条件设置 ChildrenAreShared', /无条件[^。\n]{0,12}ChildrenAreShared/, {min: 1});
+  addDocClaim('D324', '85 文档写明 cloneMultiple 只能替换根的后代、不能替换根本身', /不能替换根/, {min: 1});
+  addDocClaim('D325', '85 文档写明 getStateData 在 Release 下是确定性未定义行为', /未定义行为|确定性 UB/, {min: 1});
+  addDocClaim('D326', '85 文档写明 RawValue 的数组类型检查只检查第一个元素', /只检查第一个元素/, {min: 1});
+  addDocClaim('D327', '85 文档写明 getSealed() 在 Release 恒真、sealRecursive 首轮短路', /getSealed\(\) 恒/, {min: 1});
+  addDocClaim('D328', '85 文档写明 Release 下没有 resetLoop 死循环保护', /死循环保护/, {min: 1});
+
+// 86 文档 · 文档侧（8 条）
+  addDocClaim('D329', '86 文档写明 LayoutMetrics hash 漏掉 positionType 等字段', /漏掉[^。\n]{0,12}positionType/, {min: 1});
+  addDocClaim('D330', '86 文档写明 LayoutConstraints 在 min > max 时静默返回 min', /min > max/, {min: 1});
+  addDocClaim('D331', '86 文档写明 findNodeAtPoint 的子节点按 rbegin 反向（z 最大优先）遍历', /rbegin/, {min: 1});
+  addDocClaim('D332', '86 文档写明 CornerInsets 的向量分支赋值后没有 return', /没有 `return`/, {min: 1});
+  addDocClaim('D333', '86 文档写明 setEnabled 的 enable 分支没有重建 eventTarget', /重建 target/, {min: 1});
+  addDocClaim('D334', '86 文档写明 willDispatchEvent 在 shared_lock 内执行回调', /shared_lock/, {min: 1});
+  addDocClaim('D335', '86 文档写明 EventBeat 的 owner 过期路径不复位 isBeatCallbackScheduled_', /isBeatCallbackScheduled_/, {min: 1});
+  addDocClaim('D336', '86 文档写明动态 pointer payload 使 PointerEvent 专用分支不可达', /不可达/, {min: 1});
+
+
 // 报告
 // ────────────────────────────────────────────────────────────────────────
 const fail = checks.filter(c => !c.ok);

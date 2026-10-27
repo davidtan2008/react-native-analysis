@@ -69,7 +69,7 @@ git -c protocol.file.allow=always submodule update --checkout react-native
 react-native-analysis/              ← 本仓库：知识库 + 审计工具链
 ├── docs/arch/                     ← 知识库主体
 │   ├── README.md                  ← 文档总目录（每篇文档一句话摘要）
-│   ├── 01-*.md … 84-*.md          ← 84 篇源码解析文档
+│   ├── 01-*.md … 86-*.md          ← 86 篇源码解析文档
 │   ├── INDEX/                     ← 4 个检索索引（由脚本生成，禁止手改）
 │   │   ├── 00-主题地图.md          ← 按主题域 / 子主题浏览
 │   │   ├── 01-症状排查手册.md      ← 按现象排查
@@ -105,7 +105,7 @@ commit 被**有意钉死**：文档中的行号断言是针对这个 commit 验�
 | **我记得源码里的某个类或目录** | [`docs/arch/INDEX/03-符号与源码入口.md`](./docs/arch/INDEX/03-符号与源码入口.md) |
 | **我记得某条结论编号**（`ZZ-1` / `AAA-1` / `BBB-2` …） | [`docs/arch/INDEX/02-结论速查表.md`](./docs/arch/INDEX/02-结论速查表.md) |
 
-全部 84 篇文档的清单见 [`docs/arch/README.md`](./docs/arch/README.md)。
+全部 86 篇文档的清单见 [`docs/arch/README.md`](./docs/arch/README.md)。
 
 ### 典型排障流程
 
@@ -143,13 +143,13 @@ done
 ### 当前状态
 
 ```
-文档:          85 篇（84 篇解析文档 + 目录）
-引用:          3928 条（3594 带行号 + 334 纯路径）   全部有效
-代码块:        1323 块 / 8995 行已核验             可疑 0
-文档间链接:    585 条                               断链 0
-核心断言:      1805 条                              全部通过
-结论登记:      676 条 / 8 主题域 / 37 子主题 / 17 类症状
-源码覆盖:      4176 个代码文件，已读 1106 (26.5%)，未声明 167
+文档:          87 篇（86 篇解析文档 + 目录）
+引用:          4079 条（3745 带行号 + 334 纯路径）   全部有效
+代码块:        1359 块 / 9334 行已核验             可疑 0
+文档间链接:    590 条                               断链 0
+核心断言:      1885 条                              全部通过
+结论登记:      738 条 / 8 主题域 / 37 子主题 / 17 类症状
+源码覆盖:      4176 个代码文件，已读 1149 (27.5%)，未声明 167
 ```
 
 详细的门禁说明与「已踩过的坑」见 [`docs/arch/audit/README.md`](./docs/arch/audit/README.md)。
@@ -225,7 +225,7 @@ done
 
 | 文档 | 说明 |
 | --- | --- |
-| [`docs/arch/README.md`](./docs/arch/README.md) | 84 篇文档的清单与内容摘要 |
+| [`docs/arch/README.md`](./docs/arch/README.md) | 86 篇文档的清单与内容摘要 |
 | [`docs/arch/audit/README.md`](./docs/arch/audit/README.md) | 审计工具链详解 + 复核教训 |
 | [`docs/arch/audit/READ-PLAN.md`](./docs/arch/audit/READ-PLAN.md) | 38 个模块 / 14 个批次的全量通读计划 |
 | [`HANDOVER.md`](./HANDOVER.md) | **交接文档** —— 项目全貌、方法论、剩余工作的优先级与完整计划 |
